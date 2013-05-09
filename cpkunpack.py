@@ -43,22 +43,22 @@ FRAME_1RAW        = "1raw"
 FRAME_80000024    = "80 00 00 24"
 FRAME_PNG         = "PNG"
 
-FRAME_HEADER_MAP = {
-    'CPK'                                               : FRAME_CPK,
-    '\xE5\x56\xD1\x9D\x00\x00\x00\x00\x00\x00\x00'      : FRAME_ZERO,
-    'TOC'                                               : FRAME_TOC,
-    'ITOC'                                              : FRAME_ITOC,
-    'ETOC'                                              : FRAME_ETOC,
-    'CRILAYLA'                                          : FRAME_CRILAYLA,
-    'CRI'                                               : FRAME_CRI,
-    'MIG.00.1PSP\x00'                                   : FRAME_GIM,
-    '1raw'                                              : FRAME_1RAW,
-    '\x80\x00\x00\x24\x03\x12\x04\x02\x00\x00\x56\x22'  : FRAME_80000024,
-    '\x89PNG\x0D\x0A\x1A\x0A'                           : FRAME_PNG,
-}
+FRAME_HEADER_MAP = [
+    ('CPK'                                               , FRAME_CPK),
+    ('\xE5\x56\xD1\x9D\x00\x00\x00\x00\x00\x00\x00'      , FRAME_ZERO),
+    ('TOC'                                               , FRAME_TOC),
+    ('ITOC'                                              , FRAME_ITOC),
+    ('ETOC'                                              , FRAME_ETOC),
+    ('CRILAYLA'                                          , FRAME_CRILAYLA),
+    ('CRI'                                               , FRAME_CRI),
+    ('MIG.00.1PSP\x00'                                   , FRAME_GIM),
+    ('1raw'                                              , FRAME_1RAW),
+    ('\x80\x00\x00\x24\x03\x12\x04\x02\x00\x00\x56\x22'  , FRAME_80000024),
+    ('\x89PNG\x0D\x0A\x1A\x0A'                           , FRAME_PNG),
+]
 
 def identify(header, nofail=False):
-    for k, v in FRAME_HEADER_MAP.items():
+    for k, v in FRAME_HEADER_MAP:
         if header.startswith(k):
             return v
     if not nofail:
