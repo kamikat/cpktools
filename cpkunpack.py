@@ -62,6 +62,7 @@ def identify(header, nofail=False):
 
 from StringIO import StringIO
 from struct import unpack
+from contextlib import closing
 
 def parseCriHeader(header):
     for i in xrange(4):
@@ -78,7 +79,7 @@ def extract_criframe(header, f):
     return (data, )
 
 def extract_gim(header, f):
-    with StringIO() as out:
+    with closing(StringIO()) as out:
         reserved = f.read(0x04)
         assert reserved == '\x02\x00\x00\x00'
         out.write(reserved)
@@ -90,7 +91,7 @@ def extract_gim(header, f):
         return (out.getvalue(), )
 
 def extract_1raw(header, f):
-    with StringIO() as out:
+    with closing(StringIO()) as out:
         while identify(data, True):
             data = f.read(0x10)
             out.write(data)
@@ -98,7 +99,7 @@ def extract_1raw(header, f):
         return (out.getvalue(), )
 
 def extract_80000024(header, f):
-    with StringIO() as out:
+    with closing(StringIO()) as out:
         while True:
             tmp = infile.read(0x04)
             out.write(tmp)
@@ -107,7 +108,7 @@ def extract_80000024(header, f):
         return (out.getvalue(), )
 
 def extract_png(header, f):
-    with StringIO() as out:
+    with closing(StringIO()) as out:
         prvdata = ''
         while True:
             data = f.read(0x10)
