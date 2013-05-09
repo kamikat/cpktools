@@ -96,8 +96,10 @@ def extract_gim(header, f):
 
 def extract_1raw(header, f):
     with closing(StringIO()) as out:
-        while identify(data, True):
+        while True:
             data = f.read(0x10)
+            if identify(data, True):
+                break
             out.write(data)
         f.seek(-0x10, 1)
         return (out.getvalue(), )
