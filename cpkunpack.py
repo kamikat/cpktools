@@ -150,20 +150,19 @@ def readframe(f):
     while True:
         offset = f.tell()
         header = f.read(0x10)
-        if header != '':
-            typename = identify(header)
-            data = extract(typename, header, f)
-            yield DataFrame(offset, typename, header, data)
+        typename = identify(header)
+        data = extract(typename, header, f)
+        yield DataFrame(offset, typename, header, data)
 
-            if f.tell() % 0x10 > 0:
-                f.read(0x10 - f.tell() % 0x10)
-
+        if f.tell() % 0x10 > 0:
+            f.read(0x10 - f.tell() % 0x10)
+        while True:
             padding = f.read(0x10)
-            while padding[0] == '\x00':
-                padding = f.read(0x10)
-            f.seek(-0x10, 1)
-        else:
-            return
+            if padding == '':
+                return;
+            if padding[0] != '\x00':
+                break;
+        f.seek(-0x10, 1)
 
 if __name__ == '__main__':
 
