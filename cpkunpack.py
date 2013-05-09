@@ -32,6 +32,8 @@ class DataFrame:
 
 # FRAME Format
 FRAME_CPK         = "CPK"
+FRAME_ZERO        = "E5 56 D1 9D"
+FRAME_TOC         = "TOC"
 FRAME_ITOC        = "ITOC"
 FRAME_ETOC        = "ETOC"
 FRAME_CRILAYLA    = "CRILAYLA"
@@ -43,6 +45,8 @@ FRAME_PNG         = "PNG"
 
 FRAME_HEADER_MAP = {
     'CPK'                                               : FRAME_CPK,
+    '\xE5\x56\xD1\x9D\x00\x00\x00\x00\x00\x00\x00'      : FRAME_ZERO,
+    'TOC'                                               : FRAME_TOC,
     'ITOC'                                              : FRAME_ITOC,
     'ETOC'                                              : FRAME_ETOC,
     'CRILAYLA'                                          : FRAME_CRILAYLA,
@@ -122,6 +126,8 @@ def extract_png(header, f):
 
 FRAME_EXTRACTOR_MAP = {
     FRAME_CPK       : extract_criframe,
+    FRAME_ZERO      : extract_criframe,
+    FRAME_TOC       : extract_criframe,
     FRAME_ITOC      : extract_criframe,
     FRAME_ETOC      : extract_criframe,
     FRAME_CRILAYLA  : extract_criframe,
