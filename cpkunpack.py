@@ -175,8 +175,31 @@ if __name__ == '__main__':
 
     infile = open(args.input, 'rb')
 
+    STAT = {
+        FRAME_CPK       : 0,
+        FRAME_ZERO      : 0,
+        FRAME_TOC       : 0,
+        FRAME_ITOC      : 0,
+        FRAME_ETOC      : 0,
+        FRAME_CRILAYLA  : 0,
+        FRAME_CRI       : 0,
+        FRAME_GIM       : 0,
+        FRAME_1RAW      : 0,
+        FRAME_80000024  : 0,
+        FRAME_PNG       : 0,
+    }
+
+    frames = 0
+
     for frame in readframe(infile):
+        STAT[frame.typename] += 1
+        frames += 1
         print >>stderr, "0x%010X Found %s frame (0x%06X)" % (frame.offset, frame.typename, len(frame.data[0]))
+
+    print >>stderr, "Scanner Found %d Frames" % frames
+
+    for h, k in FRAME_HEADER_MAP:
+        print >>stderr, "%15s : %d" % (k, STAT[k])
 
     infile.close();
 
