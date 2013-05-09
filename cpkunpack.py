@@ -146,6 +146,8 @@ def extract(typename, header, f):
         raise Exception('Extractor for %s undefined' % typename)
     return func(header, f)
 
+PADDING_LINE = '\x00' * 0x10
+
 def readframe(f):
     while True:
         offset = f.tell()
@@ -160,7 +162,7 @@ def readframe(f):
             padding = f.read(0x10)
             if padding == '':
                 return;
-            if padding[0] != '\x00':
+            if padding != PADDING_LINE:
                 break;
         f.seek(-0x10, 1)
 
