@@ -175,19 +175,10 @@ if __name__ == '__main__':
 
     infile = open(args.input, 'rb')
 
-    STAT = {
-        FRAME_CPK       : 0,
-        FRAME_ZERO      : 0,
-        FRAME_TOC       : 0,
-        FRAME_ITOC      : 0,
-        FRAME_ETOC      : 0,
-        FRAME_CRILAYLA  : 0,
-        FRAME_CRI       : 0,
-        FRAME_GIM       : 0,
-        FRAME_1RAW      : 0,
-        FRAME_80000024  : 0,
-        FRAME_PNG       : 0,
-    }
+    STAT = {}
+
+    for h, k in FRAME_HEADER_MAP:
+        STAT[k] = 0
 
     frames = 0
 
