@@ -16,7 +16,7 @@ outfile = open(args.output, 'wb')
 def known(header):
     if header.startswith('CRILAYLA'): return "CRILAYLA"
     if header.startswith('CRI'): return "CRI"
-    if header.startswith('GIM.00.1PSP'): return "GIM"
+    if header.startswith('MIG.00.1PSP'): return "GIM"
     if header.startswith('1raw'): return "RAW"
     if header.startswith('\x80\x00\x00\x24\x03\x12\x04\x02\x00\x00\x56\x22'): return "80 00 00 24"
     if header.startswith('\x89PNG\x0D\x0A\x1A\x0A'): return "PNG"
