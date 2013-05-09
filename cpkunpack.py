@@ -46,7 +46,7 @@ FRAME_PNG         = "PNG"
 
 FRAME_HEADER_MAP = [
     ('CPK'                                               , FRAME_CPK),
-    ('\xE5\x56\xD1\x9D\x00\x00\x00\x00\x00\x00\x00'      , FRAME_ZERO),
+    ('\xE5\x56\xD1\x9D' + '\x00' * 12                    , FRAME_ZERO),
     ('\x00' * 10 + '(c)CRI'                              , FRAME_COPYRIGHT),
     ('TOC'                                               , FRAME_TOC),
     ('ITOC'                                              , FRAME_ITOC),
