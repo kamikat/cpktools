@@ -81,8 +81,8 @@ def extract_criframe(header, f):
     marker, size = parseCriHeader(header)
     data = f.read(size)
     if marker.startswith("CRILAYLA"):
-        return (data, f.read(0x100))
-    return (data, )
+        return [data, f.read(0x100)]
+    return [data]
 
 def extract_gim(header, f):
     with closing(StringIO()) as out:
@@ -94,7 +94,7 @@ def extract_gim(header, f):
         out.write(sizedata)
         data = f.read(size)
         out.write(data)
-        return (out.getvalue(), )
+        return [out.getvalue()]
 
 def extract_1raw(header, f):
     with closing(StringIO()) as out:
@@ -104,7 +104,7 @@ def extract_1raw(header, f):
                 break
             out.write(data)
         f.seek(-0x10, 1)
-        return (out.getvalue(), )
+        return [out.getvalue()]
 
 def extract_80000024(header, f):
     with closing(StringIO()) as out:
@@ -113,7 +113,7 @@ def extract_80000024(header, f):
             out.write(tmp)
             if tmp == '\x80\x01\x00\x0E':
                 break;
-        return (out.getvalue(), )
+        return [out.getvalue()]
 
 def extract_png(header, f):
     with closing(StringIO()) as out:
@@ -126,11 +126,15 @@ def extract_png(header, f):
                 break
             else:
                 prvdata = hexdata
-        return (out.getvalue(), )
+        return [out.getvalue()]
+
+def extract_none(header, f):
+    return ['']
 
 FRAME_EXTRACTOR_MAP = {
     FRAME_CPK       : extract_criframe,
-    FRAME_ZERO      : extract_criframe,
+    FRAME_ZERO      : extract_none,
+    FRAME_COPYRIGHT : extract_none,
     FRAME_TOC       : extract_criframe,
     FRAME_ITOC      : extract_criframe,
     FRAME_ETOC      : extract_criframe,
