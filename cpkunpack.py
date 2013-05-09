@@ -52,7 +52,7 @@ FRAME_HEADER_MAP = [
     ('ITOC'                                              , FRAME_ITOC),
     ('ETOC'                                              , FRAME_ETOC),
     ('CRILAYLA'                                          , FRAME_CRILAYLA),
-    ('CRI'                                               , FRAME_CRI),
+#   ('CRI'                                               , FRAME_CRI),
     ('MIG.00.1PSP\x00'                                   , FRAME_GIM),
     ('1raw'                                              , FRAME_1RAW),
     ('\x80\x00\x00\x24\x03\x12\x04\x02\x00\x00\x56\x22'  , FRAME_80000024),
