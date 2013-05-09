@@ -153,18 +153,23 @@ def readframe(f):
             padding = f.read(0x10)
         infile.seek(-0x10, 1)
 
-import argparse
+if __name__ == '__main__':
 
-parser = argparse.ArgumentParser(description='unpack a cpk archive')
-parser.add_argument('input', help='Input CPK file')
-args = parser.parse_args()
+    import argparse
+    from sys import stderr
 
-infile = open(args.input, 'rb')
+    parser = argparse.ArgumentParser(description='unpack a cpk archive')
+    parser.add_argument('input', help='Input CPK file')
+    args = parser.parse_args()
 
-for frame in readframe(infile):
-    print "0x%010X Found %s frame (0x%06X)" % (frame.offset, frame.typename, len(frame.data))
+    infile = open(args.input, 'rb')
 
-exit(0);
+    for frame in readframe(infile):
+        print >>stderr, "0x%010X Found %s frame (0x%06X)" % (frame.offset, frame.typename, len(frame.data[0]))
+
+    infile.close();
+
+    exit(0);
 
 class UTF:
     """UTF Table Structure"""
