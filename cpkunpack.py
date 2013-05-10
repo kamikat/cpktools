@@ -385,29 +385,55 @@ class TableLibrary(dict):
             TableLibrary.__filter[k](s, v)
         dict.__setitem__(s, k, v)
 
-    def offset2row(s, offset):
-        return s.__OFFSET_ROW_MAP[offset]
+    def fromoffset(s, offset):
+        return Row(s[FRAME_TOC].utf, s.__OFFSET_ROW_MAP[offset])
+
+class Row:
+    """Shell to access row data"""
+
+    def __init__(s, utf, rowid):
+        s.utf = utf
+        s.rowid = rowid
+
+    def __getattr__(s, key):
+        return s.utf.value(key, s.rowid)
+
+def __deflate(fin, fout):
+    pass
 
 def uncompress(lib, dataframe):
 
-    toc = lib[FRAME_TOC].utf
+    row = lib.fromoffset(dataframe.offset)
 
-    rowid = lib.offset2row(dataframe.offset)
-
-    dirname = toc.value('DirName', rowid)[0]
-    filename = toc.value('FileName', rowid)[0]
+    dirname = row.DirName[0]
 
     (
         marker, uncompressed_size, datasize
     ) = unpack('<8sLL', dataframe.header)
 
     assert marker == 'CRILAYLA'
-    
+
+    assert datasize + 0x0100 == row.FileSize[0] - 0x10
+    #      ^ Compressed Data    ^ Frame Size      ^ Frame Header
+    #                 ^ Uncompressed Header 
+
+    assert uncompressed_size + 0x0100 == row.ExtractSize[0]
+    #      ^ Uncompressed Data Size      ^ Original File Size
+    #                          ^ Uncompressed Header
+
     # DEBUG
     print >>stderr, ' ' * 52 + '\r',
-    print >>stderr, '%-30s 0x%08x -> 0x%08x (+0x0100=0x%08x)' % (filename, datasize, uncompressed_size, uncompressed_size + 0x0100)
+    print >>stderr, '%-30s 0x%08x -> 0x%08x (+0x0100=0x%08x)' % (row.FileName[0], datasize, uncompressed_size, uncompressed_size + 0x0100)
 
-    pass
+    with closing(StringIO(dataframe.data[1])) as data:
+        data.seek(0, 2)
+        assert data.tell() == 0x0100
+        with closing(StringIO(dataframe.data[0])) as f:
+            # Uncompress
+            __deflate(f, data)
+        data.seek(0, 2)
+        assert data.tell() == row.ExtractSize[0] - 1
+        return (row.DirName[0], row.FileName[0], data.getvalue())
 
 ################
 # CLI Fragment #
