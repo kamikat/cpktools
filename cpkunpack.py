@@ -231,10 +231,10 @@ class Field:
 from struct import calcsize
 
 def readrow(f, utf):
-    for i in xrange(utf.rows):
+    for i in xrange(utf.row_length):
         start_offset = f.tell()
         row = []
-        for s in utf.schema:
+        for s in utf.columns:
             if s.feature(COLUMN_STORAGE_CONSTANT):
                 row.append(s.data)
             elif s.feature(COLUMN_STORAGE_ZERO):
@@ -275,9 +275,9 @@ class UTF:
                     s.string_table_offset, 
                     s.data_offset, # always == s.table_size
                     s.table_name_string, 
-                    s.columns, 
+                    s.column_length, 
                     s.row_width, 
-                    s.rows
+                    s.row_length
             ) = unpack('>LLLLHHL', f.read(0x18))
 
             # Table Name
@@ -286,7 +286,7 @@ class UTF:
 
             # Schema
 
-            s.schema = s.__readschema(f)
+            s.columns = s.__readschema(f)
 
             # Rows Data
 
@@ -300,7 +300,7 @@ class UTF:
     def __readschema(s, f):
         s.key2idx = {}
         schema = []
-        while len(schema) < s.columns:
+        while len(schema) < s.column_length:
             field = Field(s, f)
             s.key2idx[f.name] = len(schema)
             schema.append(f)
@@ -385,12 +385,12 @@ if __name__ == '__main__':
             # @UTF Table Format
             frame.utf = table = UTF(frame.data[0])
 
-            # print schema
+            # print schema(columns)
 
             write_line('=')
             print "Schema %s (%s)" % (table.name, frame.typename)
             write_line('-')
-            for field in table.schema:
+            for field in table.columns:
                 print "\t%02x %30s(0x%08x)" % (field.typeid, field.name, field.nameoffset)
                 if field.feature(COLUMN_STORAGE_CONSTANT):
                     print ("\t > " + COLUMN_TYPE_PRINT[field.fieldtype]) % (field.data)
@@ -399,37 +399,37 @@ if __name__ == '__main__':
             # for CPK header, print in K-V style
 
             if frame.typename == FRAME_CPK:
-                for i in xrange(table.columns):
-                    if table.schema[i].feature([
+                for i in xrange(len(table.columns)):
+                    if table.columns[i].feature([
                         COLUMN_STORAGE_ZERO, 
                         COLUMN_STORAGE_CONSTANT,
                         ]):
                         continue
-                    print '%30s' % table.schema[i].name,
-                    print (COLUMN_TYPE_PRINT[table.schema[i].fieldtype] % table.rows[0][i]).strip()
+                    print '%30s' % table.columns[i].name,
+                    print (COLUMN_TYPE_PRINT[table.columns[i].fieldtype] % table.rows[0][i]).strip()
                 continue
 
             # print table header
 
-            for i in xrange(table.columns):
-                if table.schema[i].feature([
+            for i in xrange(len(table.columns)):
+                if table.columns[i].feature([
                     COLUMN_STORAGE_ZERO, 
                     COLUMN_STORAGE_CONSTANT,
                     ]):
                     continue
-                print '| ' + table.schema[i].name,
+                print '| ' + table.columns[i].name,
             print '|'
 
             # print table rows
 
             for row in table.rows:
-                for i in xrange(table.columns):
-                    if table.schema[i].feature([
+                for i in xrange(len(table.columns)):
+                    if table.columns[i].feature([
                         COLUMN_STORAGE_ZERO, 
                         COLUMN_STORAGE_CONSTANT,
                         ]):
                         continue
-                    print COLUMN_TYPE_PRINT[table.schema[i].fieldtype] % row[i],
+                    print COLUMN_TYPE_PRINT[table.columns[i].fieldtype] % row[i],
                 print
 
         elif frame.typename in [FRAME_CRILAYLA]:
