@@ -130,6 +130,7 @@ class DataFrame:
         s.typename = typename
         s.header = header
         s.data = data
+        s.utf = None
 
 PADDING_LINE = '\x00' * 0x10
 
@@ -357,7 +358,7 @@ if __name__ == '__main__':
         elif frame.typename in [FRAME_CPK, FRAME_TOC, FRAME_ITOC, FRAME_ETOC]:
 
             # @UTF Table Format
-            table = UTF(frame.data[0])
+            frame.utf = table = UTF(frame.data[0])
 
             # print schema
 
