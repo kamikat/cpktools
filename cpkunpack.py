@@ -229,16 +229,15 @@ class UTF:
             s.data = data
 
         with closing(StringIO(s.data)) as f:
-            s.header = f.read(0x08)
             (
                     s.marker, 
                     s.table_size, 
-            ) = unpack('>4sL', s.header)
+            ) = unpack('>4sL', f.read(0x08))
             assert s.marker == '@UTF'
             s.table_content = f.read(s.table_size)
+            assert len(s.table_content) == s.table_size
 
         with closing(StringIO(s.table_content)) as f:
-            flags = f.read(0x18)
             (
                     s.rows_offset, 
                     s.string_table_offset, 
@@ -247,7 +246,7 @@ class UTF:
                     s.columns, 
                     s.row_width, 
                     s.rows
-            ) = unpack('>LLLLHHL', flags)
+            ) = unpack('>LLLLHHL', f.read(0x18))
 
             # Table Name
 
