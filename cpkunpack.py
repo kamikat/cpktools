@@ -1,35 +1,5 @@
 #!/usr/bin/env python
 
-# UTF Table Constants Definition (From utf_table)
-# Suspect that "type 2" is signed
-COLUMN_STORAGE_MASK       = 0xf0
-COLUMN_STORAGE_PERROW     = 0x50
-COLUMN_STORAGE_CONSTANT   = 0x30
-COLUMN_STORAGE_ZERO       = 0x10
-COLUMN_TYPE_MASK          = 0x0f
-COLUMN_TYPE_DATA          = 0x0b
-COLUMN_TYPE_STRING        = 0x0a
-# COLUMN_TYPE_FLOAT2      = 0x09 ?
-# COLUMN_TYPE_DOUBLE      = 0x09 ?
-COLUMN_TYPE_FLOAT         = 0x08
-# COLUMN_TYPE_8BYTE2      = 0x07 ?
-COLUMN_TYPE_8BYTE         = 0x06
-COLUMN_TYPE_4BYTE2        = 0x05
-COLUMN_TYPE_4BYTE         = 0x04
-COLUMN_TYPE_2BYTE2        = 0x03
-COLUMN_TYPE_2BYTE         = 0x02
-COLUMN_TYPE_1BYTE2        = 0x01
-COLUMN_TYPE_1BYTE         = 0x00
-
-class DataFrame:
-    """A Frame Of Data"""
-
-    def __init__(s, offset, typename, header, data):
-        s.offset = offset
-        s.typename = typename
-        s.header = header
-        s.data = data
-
 # FRAME Format
 FRAME_CPK         = "CPK"
 FRAME_ZERO        = "E5 56 D1 9D"
@@ -152,6 +122,15 @@ def extract(typename, header, f):
         raise Exception('Extractor for %s undefined' % typename)
     return func(header, f)
 
+class DataFrame:
+    """A Frame Of Data"""
+
+    def __init__(s, offset, typename, header, data):
+        s.offset = offset
+        s.typename = typename
+        s.header = header
+        s.data = data
+
 PADDING_LINE = '\x00' * 0x10
 
 def readframe(f):
@@ -171,6 +150,59 @@ def readframe(f):
             if padding != PADDING_LINE:
                 break;
         f.seek(-0x10, 1)
+
+# @UTF Table Constants Definition (From utf_table)
+# Suspect that "type 2" is signed
+COLUMN_STORAGE_MASK       = 0xf0
+COLUMN_STORAGE_PERROW     = 0x50
+COLUMN_STORAGE_CONSTANT   = 0x30
+COLUMN_STORAGE_ZERO       = 0x10
+COLUMN_TYPE_MASK          = 0x0f
+COLUMN_TYPE_DATA          = 0x0b
+COLUMN_TYPE_STRING        = 0x0a
+# COLUMN_TYPE_FLOAT2      = 0x09 ?
+# COLUMN_TYPE_DOUBLE      = 0x09 ?
+COLUMN_TYPE_FLOAT         = 0x08
+# COLUMN_TYPE_8BYTE2      = 0x07 ?
+COLUMN_TYPE_8BYTE         = 0x06
+COLUMN_TYPE_4BYTE2        = 0x05
+COLUMN_TYPE_4BYTE         = 0x04
+COLUMN_TYPE_2BYTE2        = 0x03
+COLUMN_TYPE_2BYTE         = 0x02
+COLUMN_TYPE_1BYTE2        = 0x01
+COLUMN_TYPE_1BYTE         = 0x00
+
+from array import array
+
+def chiper(data):
+    """Chiper for @UTF Table"""
+
+    c, m = (0x5f, 0x15)
+    v = array('B', data)
+    for i in xrange(len(v)):
+        v[i] = v[i] ^ c & 0b11111111
+        c = c * m & 0b11111111
+    return v.tostring()
+
+class UTF:
+    """@UTF Table Structure"""
+
+    def __init__(self, f):
+        self.f = f
+        self.flags = f.read(0x20)
+        (
+                self.marker, 
+                self.table_size, 
+                self.rows_offset, 
+                self.string_table_offset, 
+                self.data_offset, 
+                self.table_name_string, 
+                self.columns, 
+                self.row_width, 
+                self.rows
+        ) = unpack('>4sLLLLLHHL', flags)
+        assert self.marker == '@UTF'
+
 
 if __name__ == '__main__':
 
@@ -203,33 +235,4 @@ if __name__ == '__main__':
     infile.close();
 
     exit(0);
-
-class UTF:
-    """UTF Table Structure"""
-
-    def __init__(self, f):
-        self.f = f
-        self.flags = f.read(0x20)
-        (
-                self.marker, 
-                self.table_size, 
-                self.rows_offset, 
-                self.string_table_offset, 
-                self.data_offset, 
-                self.table_name_string, 
-                self.columns, 
-                self.row_width, 
-                self.rows
-        ) = unpack('>4sLLLLLHHL', flags)
-        assert self.marker == '@UTF'
-
-from array import array
-
-def chiper(data):
-    c, m = (0x5f, 0x15)
-    v = array('B', data)
-    for i in xrange(len(v)):
-        v[i] = v[i] ^ c & 0b11111111
-        c = c * m & 0b11111111
-    return v.tostring()
 
