@@ -371,6 +371,19 @@ if __name__ == '__main__':
                     print ("\t > " + COLUMN_TYPE_PRINT[field.fieldtype]) % (field.data)
             write_line('-')
 
+            # for CPK header, print in K-V style
+
+            if frame.typename == FRAME_CPK:
+                for i in xrange(table.columns):
+                    if table.schema[i].feature([
+                        COLUMN_STORAGE_ZERO, 
+                        COLUMN_STORAGE_CONSTANT,
+                        ]):
+                        continue
+                    print '%30s' % table.schema[i].name,
+                    print (COLUMN_TYPE_PRINT[table.schema[i].fieldtype] % table.rows[0][i]).strip()
+                continue
+
             # print table header
 
             for i in xrange(table.columns):
