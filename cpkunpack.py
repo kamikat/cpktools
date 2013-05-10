@@ -302,8 +302,8 @@ class UTF:
         schema = []
         while len(schema) < s.column_length:
             field = Field(s, f)
-            s.key2idx[f.name] = len(schema)
-            schema.append(f)
+            s.key2idx[field.name] = len(schema)
+            schema.append(field)
         return schema
 
     def __readrows(s, f):
