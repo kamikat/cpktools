@@ -194,9 +194,12 @@ class Field:
         if s.feature(COLUMN_STORAGE_CONSTANT):
             if s.feature([
                     COLUMN_TYPE_8BYTE,
-                    COLUMN_TYPE_DATA,
                     ]):
                 s.data = f.read(8)
+            elif s.feature([
+                    COLUMN_TYPE_DATA,
+                    ]):
+                s.data = unpack('>LL', f.read(8))
             elif s.feature([
                     COLUMN_TYPE_STRING, COLUMN_TYPE_FLOAT, 
                     COLUMN_TYPE_4BYTE2, COLUMN_TYPE_4BYTE,
@@ -217,6 +220,40 @@ class Field:
         else:
             return s.storagetype == typeid or s.fieldtype == typeid or s.typeid == typeid
 
+COLUMN_TYPE_MAP = {
+    COLUMN_TYPE_DATA    : '>LL',
+    COLUMN_TYPE_STRING  : '>L',
+    COLUMN_TYPE_FLOAT   : '>f',
+    COLUMN_TYPE_8BYTE   : '>Q',
+    COLUMN_TYPE_4BYTE2  : '>l',
+    COLUMN_TYPE_4BYTE   : '>L',
+    COLUMN_TYPE_2BYTE2  : '>h',
+    COLUMN_TYPE_2BYTE   : '>H',
+    COLUMN_TYPE_1BYTE2  : '>b',
+    COLUMN_TYPE_1BYTE   : '>B',
+}
+
+from struct import calcsize
+
+def readrow(f, utf):
+    for i in xrange(utf.rows):
+        start_offset = f.tell()
+        row = []
+        for s in utf.schema:
+            if s.feature(COLUMN_STORAGE_CONSTANT):
+                row.append(s.data)
+            elif s.feature(COLUMN_STORAGE_ZERO):
+                row.append(())
+            elif s.feature(COLUMN_STORAGE_PERROW):
+                pattern = COLUMN_TYPE_MAP[s.fieldtype]
+                if not pattern:
+                    raise Exception("Unknown Type 0x%02x" % s.fieldtype)
+                col_data = unpack(pattern, f.read(calcsize(pattern)))
+                if s.feature(COLUMN_TYPE_STRING):
+                    col_data = (utf.getstring(f, col_data[0]), col_data[0])
+                row.append(col_data)
+        assert f.tell() - start_offset == utf.row_width
+        yield row
 
 class UTF:
     """@UTF Table Structure"""
@@ -256,11 +293,26 @@ class UTF:
 
             s.schema = s.__readschema(f)
 
+            # Rows Data
+
+            assert f.tell() == s.rows_offset
+
+            f.seek(s.rows_offset, 0)
+            s.rows = s.__readrows(f)
+
+            assert f.tell() == s.string_table_offset
+
     def __readschema(s, f):
         schema = []
         while len(schema) < s.columns:
             schema.append(Field(s, f))
         return schema
+
+    def __readrows(s, f):
+        rows = []
+        for row in readrow(f, s):
+            rows.append(row)
+        return rows
 
     def getstring(s, f, string):
         original = f.tell()
