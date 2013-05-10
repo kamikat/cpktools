@@ -404,7 +404,9 @@ if __name__ == '__main__':
 
             # for CPK header, print in K-V style
 
-            if frame.typename == FRAME_CPK:
+            if frame.typename in [FRAME_CPK]:
+                # Vertical Table
+
                 for i in xrange(len(table.columns)):
                     if table.columns[i].feature([
                         COLUMN_STORAGE_ZERO, 
@@ -413,30 +415,29 @@ if __name__ == '__main__':
                         continue
                     print '%30s' % table.columns[i].name,
                     print (COLUMN_TYPE_PRINT[table.columns[i].fieldtype] % table.rows[0][i]).strip()
-                continue
+            else:
+                # Horizontal Table
 
-            # print table header
-
-            for i in xrange(len(table.columns)):
-                if table.columns[i].feature([
-                    COLUMN_STORAGE_ZERO, 
-                    COLUMN_STORAGE_CONSTANT,
-                    ]):
-                    continue
-                print '| ' + table.columns[i].name,
-            print '|'
-
-            # print table rows
-
-            for row in table.rows:
+                # print table header
                 for i in xrange(len(table.columns)):
                     if table.columns[i].feature([
                         COLUMN_STORAGE_ZERO, 
                         COLUMN_STORAGE_CONSTANT,
                         ]):
                         continue
-                    print COLUMN_TYPE_PRINT[table.columns[i].fieldtype] % row[i],
-                print
+                    print '| ' + table.columns[i].name,
+                print '|'
+
+                # print table rows
+                for row in table.rows:
+                    for i in xrange(len(table.columns)):
+                        if table.columns[i].feature([
+                            COLUMN_STORAGE_ZERO, 
+                            COLUMN_STORAGE_CONSTANT,
+                            ]):
+                            continue
+                        print COLUMN_TYPE_PRINT[table.columns[i].fieldtype] % row[i],
+                    print
 
         elif frame.typename in [FRAME_CRILAYLA]:
             # CRI Package
