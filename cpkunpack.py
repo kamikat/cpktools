@@ -261,6 +261,7 @@ class UTF:
         if data.startswith('\x1F\x9E\xF3\xF5'):
             # If the data is encrypted
             s.data = chiper(data)
+            s.encrypted = True
         else:
             s.data = data
 
