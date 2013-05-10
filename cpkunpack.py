@@ -387,6 +387,26 @@ class TableLibrary(dict):
 
     def offset2row(s, offset):
         return s.__OFFSET_ROW_MAP[offset]
+
+def uncompress(lib, dataframe):
+
+    toc = lib[FRAME_TOC].utf
+
+    rowid = lib.offset2row(dataframe.offset)
+
+    dirname = toc.value('DirName', rowid)[0]
+    filename = toc.value('FileName', rowid)[0]
+
+    (
+        marker, uncompressed_size, datasize
+    ) = unpack('<8sLL', dataframe.header)
+
+    assert marker == 'CRILAYLA'
+    
+    # DEBUG
+    print >>stderr, ' ' * 52 + '\r',
+    print >>stderr, '%-30s 0x%08x -> 0x%08x (+0x0100=0x%08x)' % (filename, datasize, uncompressed_size, uncompressed_size + 0x0100)
+
     pass
 
 ################
@@ -496,6 +516,7 @@ if __name__ == '__main__':
 
         elif frame.typename in [FRAME_CRILAYLA]:
             # CRI Package
+            uncompress(lib, frame)
             pass
         else:
             # Raw File Frame
