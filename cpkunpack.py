@@ -184,27 +184,104 @@ def chiper(data):
         c = c * m & 0b11111111
     return v.tostring()
 
+class Field:
+
+    def __init__(s, utf, f):
+        s.typeid, s.nameoffset = unpack('>BL', f.read(0x05))
+        s.name = utf.getstring(f, s.nameoffset)
+        s.storagetype = s.typeid & COLUMN_STORAGE_MASK
+        s.fieldtype = s.typeid & COLUMN_TYPE_MASK
+        if s.feature(COLUMN_STORAGE_CONSTANT):
+            if s.feature([
+                    COLUMN_TYPE_8BYTE,
+                    COLUMN_TYPE_DATA,
+                    ]):
+                s.data = f.read(8)
+            elif s.feature([
+                    COLUMN_TYPE_STRING, COLUMN_TYPE_FLOAT, 
+                    COLUMN_TYPE_4BYTE2, COLUMN_TYPE_4BYTE,
+                    ]):
+                s.data = f.read(4)
+            elif s.feature([
+                    COLUMN_TYPE_2BYTE2, COLUMN_TYPE_2BYTE,
+                    ]):
+                s.data = f.read(2)
+            elif s.feature([
+                    COLUMN_TYPE_1BYTE2, COLUMN_TYPE_1BYTE,
+                    ]):
+                s.data = f.read(1)
+
+    def feature(s, typeid):
+        if type(typeid) == list:
+            return s.storagetype in typeid or s.fieldtype in typeid or s.typeid in typeid
+        else:
+            return s.storagetype == typeid or s.fieldtype == typeid or s.typeid == typeid
+
+
 class UTF:
     """@UTF Table Structure"""
 
-    def __init__(self, f):
-        self.f = f
-        self.flags = f.read(0x20)
-        (
-                self.marker, 
-                self.table_size, 
-                self.rows_offset, 
-                self.string_table_offset, 
-                self.data_offset, 
-                self.table_name_string, 
-                self.columns, 
-                self.row_width, 
-                self.rows
-        ) = unpack('>4sLLLLLHHL', flags)
-        assert self.marker == '@UTF'
+    def __init__(s, data):
+        if data.startswith('\x1F\x9E\xF3\xF5'):
+            # If the data is encrypted
+            s.data = chiper(data)
+        else:
+            s.data = data
+
+        with closing(StringIO(s.data)) as f:
+            s.header = f.read(0x08)
+            (
+                    s.marker, 
+                    s.table_size, 
+            ) = unpack('>4sL', s.header)
+            assert s.marker == '@UTF'
+            s.table_content = f.read(s.table_size)
+
+        with closing(StringIO(s.table_content)) as f:
+            flags = f.read(0x18)
+            (
+                    s.rows_offset, 
+                    s.string_table_offset, 
+                    s.data_offset, # always == s.table_size
+                    s.table_name_string, 
+                    s.columns, 
+                    s.row_width, 
+                    s.rows
+            ) = unpack('>LLLLHHL', flags)
+
+            # Table Name
+
+            s.name = s.getstring(f, s.table_name_string)
+
+            # Schema
+
+            s.schema = s.__readschema(f)
+
+    def __readschema(s, f):
+        schema = []
+        while len(schema) < s.columns:
+            schema.append(Field(s, f))
+        return schema
+
+    def getstring(s, f, string):
+        original = f.tell()
+        f.seek(s.string_table_offset + string, 0)
+        data = ''
+        while True:
+            tmp = f.read(1)
+            if tmp == '\x00':
+                break
+            data += tmp
+        f.seek(original, 0)
+        return data
 
 
 if __name__ == '__main__':
+
+    LINE_WIDTH = 52
+
+    def write_line(strline):
+        print >>stderr, strline * LINE_WIDTH
 
     import argparse
     from sys import stderr
@@ -230,6 +307,18 @@ if __name__ == '__main__':
             pass
         elif frame.typename in [FRAME_CPK, FRAME_TOC, FRAME_ITOC, FRAME_ETOC]:
             # @UTF Table Format
+            table = UTF(frame.data[0])
+
+            # print schema
+
+            write_line('=')
+            print "Schema %s (%s)" % (table.name, frame.typename)
+            write_line('-')
+            for field in table.schema:
+                print "\t%02x %s" % (field.typeid, field.name)
+                if field.feature(COLUMN_STORAGE_CONSTANT):
+                    print "\t\t%s" % (field.data.encode('hex'))
+
             pass
         elif frame.typename in [FRAME_CRILAYLA]:
             # CRI Package
@@ -244,7 +333,7 @@ if __name__ == '__main__':
         print >>stderr, "0x%010X Found Frame %-16s (0x%06X)\r" % \
                 (frame.offset, frame.typename, len(frame.data[0])),
 
-    print >>stderr, "=" * 52
+    write_line('=')
     print >>stderr, "Scanner Found %d Frames" % frames
 
     for h, k in FRAME_HEADER_MAP:
