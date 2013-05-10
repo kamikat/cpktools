@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+#######################
+# Data Frame Fragment #
+#######################
+
 # FRAME Format
 FRAME_CPK         = "CPK"
 FRAME_ZERO        = "E5 56 D1 9D"
@@ -151,6 +155,10 @@ def readframe(f):
             if padding != PADDING_LINE:
                 break;
         f.seek(-0x10, 1)
+
+#######################
+# @UTF Table Fragment #
+#######################
 
 # @UTF Table Constants Definition (From utf_table)
 # Suspect that "type 2" is signed
@@ -312,6 +320,17 @@ class UTF:
             data += tmp
         f.seek(original, 0)
         return data
+
+#######################
+# Uncompress Fragment #
+#######################
+
+def uncompress(dataframe, utf, row):
+    pass
+
+################
+# CLI Fragment #
+################
 
 COLUMN_TYPE_PRINT = {
     COLUMN_TYPE_DATA    : '0x%08x(0x%08x)',
