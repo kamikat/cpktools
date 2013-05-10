@@ -215,6 +215,8 @@ if __name__ == '__main__':
 
     infile = open(args.input, 'rb')
 
+    print >>stderr, "Read %s..." % args.input
+
     STAT = {}
 
     for h, k in FRAME_HEADER_MAP:
@@ -223,14 +225,30 @@ if __name__ == '__main__':
     frames = 0
 
     for frame in readframe(infile):
+        if frame.typename in [FRAME_ZERO, FRAME_COPYRIGHT]: 
+            # With no Data
+            pass
+        elif frame.typename in [FRAME_CPK, FRAME_TOC, FRAME_ITOC, FRAME_ETOC]:
+            # @UTF Table Format
+            pass
+        elif frame.typename in [FRAME_CRILAYLA]:
+            # CRI Package
+            pass
+        else:
+            # Raw File Frame
+            pass
+
+        # Statistic Information
         STAT[frame.typename] += 1
         frames += 1
-        print >>stderr, "0x%010X Found %s frame (0x%06X)" % (frame.offset, frame.typename, len(frame.data[0]))
+        print >>stderr, "0x%010X Found Frame %-16s (0x%06X)\r" % \
+                (frame.offset, frame.typename, len(frame.data[0])),
 
+    print >>stderr, "=" * 52
     print >>stderr, "Scanner Found %d Frames" % frames
 
     for h, k in FRAME_HEADER_MAP:
-        print >>stderr, "%15s : %d" % (k, STAT[k])
+        print >>stderr, "%16s : %d" % (k, STAT[k])
 
     infile.close();
 
