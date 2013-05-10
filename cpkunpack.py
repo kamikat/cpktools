@@ -250,6 +250,10 @@ def readrow(f, utf):
         assert f.tell() - start_offset == utf.row_width
         yield row
 
+class AttributeDict(dict): 
+    __getattr__ = dict.__getitem__
+    __setattr__ = dict.__setitem__
+
 class UTF:
     """@UTF Table Structure"""
 
@@ -299,10 +303,12 @@ class UTF:
 
     def __readschema(s, f):
         s.key2idx = {}
+        s.schema = AttributeDict()
         schema = []
         while len(schema) < s.column_length:
             field = Field(s, f)
             s.key2idx[field.name] = len(schema)
+            s.schema[field.name] = field
             schema.append(field)
         return schema
 
