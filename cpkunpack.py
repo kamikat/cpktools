@@ -184,42 +184,6 @@ def chiper(data):
         c = c * m & 0b11111111
     return v.tostring()
 
-class Field:
-
-    def __init__(s, utf, f):
-        s.typeid, s.nameoffset = unpack('>BL', f.read(0x05))
-        s.name = utf.getstring(f, s.nameoffset)
-        s.storagetype = s.typeid & COLUMN_STORAGE_MASK
-        s.fieldtype = s.typeid & COLUMN_TYPE_MASK
-        if s.feature(COLUMN_STORAGE_CONSTANT):
-            if s.feature([
-                    COLUMN_TYPE_8BYTE,
-                    ]):
-                s.data = f.read(8)
-            elif s.feature([
-                    COLUMN_TYPE_DATA,
-                    ]):
-                s.data = unpack('>LL', f.read(8))
-            elif s.feature([
-                    COLUMN_TYPE_STRING, COLUMN_TYPE_FLOAT, 
-                    COLUMN_TYPE_4BYTE2, COLUMN_TYPE_4BYTE,
-                    ]):
-                s.data = f.read(4)
-            elif s.feature([
-                    COLUMN_TYPE_2BYTE2, COLUMN_TYPE_2BYTE,
-                    ]):
-                s.data = f.read(2)
-            elif s.feature([
-                    COLUMN_TYPE_1BYTE2, COLUMN_TYPE_1BYTE,
-                    ]):
-                s.data = f.read(1)
-
-    def feature(s, typeid):
-        if type(typeid) == list:
-            return s.storagetype in typeid or s.fieldtype in typeid or s.typeid in typeid
-        else:
-            return s.storagetype == typeid or s.fieldtype == typeid or s.typeid == typeid
-
 COLUMN_TYPE_MAP = {
     COLUMN_TYPE_DATA    : '>LL',
     COLUMN_TYPE_STRING  : '>L',
@@ -232,6 +196,28 @@ COLUMN_TYPE_MAP = {
     COLUMN_TYPE_1BYTE2  : '>b',
     COLUMN_TYPE_1BYTE   : '>B',
 }
+
+class Field:
+
+    def __init__(s, utf, f):
+        s.typeid, s.nameoffset = unpack('>BL', f.read(0x05))
+        s.name = utf.getstring(f, s.nameoffset)
+        s.storagetype = s.typeid & COLUMN_STORAGE_MASK
+        s.fieldtype = s.typeid & COLUMN_TYPE_MASK
+        if s.feature(COLUMN_STORAGE_CONSTANT):
+            pattern = COLUMN_TYPE_MAP[s.fieldtype]
+            if not pattern:
+                raise Exception("Unknown Type 0x%02x" % s.fieldtype)
+            col_data = unpack(pattern, f.read(calcsize(pattern)))
+            if s.feature(COLUMN_TYPE_STRING):
+                col_data = (utf.getstring(f, col_data[0]), col_data[0])
+            s.data = col_data
+
+    def feature(s, typeid):
+        if type(typeid) == list:
+            return s.storagetype in typeid or s.fieldtype in typeid or s.typeid in typeid
+        else:
+            return s.storagetype == typeid or s.fieldtype == typeid or s.typeid == typeid
 
 from struct import calcsize
 
