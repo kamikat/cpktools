@@ -298,9 +298,12 @@ class UTF:
             assert f.tell() == s.string_table_offset
 
     def __readschema(s, f):
+        s.key2idx = {}
         schema = []
         while len(schema) < s.columns:
-            schema.append(Field(s, f))
+            field = Field(s, f)
+            s.key2idx[f.name] = len(schema)
+            schema.append(f)
         return schema
 
     def __readrows(s, f):
@@ -320,6 +323,9 @@ class UTF:
             data += tmp
         f.seek(original, 0)
         return data
+
+    def value(s, key, row = 0):
+        return s.rows[row][s.key2idx[key]]
 
 #######################
 # Uncompress Fragment #
