@@ -337,7 +337,56 @@ class UTF:
 # Uncompress Fragment #
 #######################
 
-def uncompress(dataframe, utf, row):
+class TableLibrary(dict):
+    
+    def __cpk(s, v):
+        utf = v.utf
+
+        assert utf.schema.ContentOffset.feature(COLUMN_TYPE_8BYTE)
+        assert utf.schema.TocOffset.feature(COLUMN_TYPE_8BYTE)
+
+        s.TOC_BASELINE = min(utf.value('ContentOffset')[0], utf.value('TocOffset')[0])
+
+    def __toc(s, v):
+        utf = v.utf
+
+        assert utf.schema.DirName.feature(COLUMN_TYPE_STRING)
+        assert utf.schema.FileName.feature(COLUMN_TYPE_STRING)
+        assert utf.schema.FileSize.feature(COLUMN_TYPE_4BYTE)
+        assert utf.schema.ExtractSize.feature(COLUMN_TYPE_4BYTE)
+        assert utf.schema.FileOffset.feature(COLUMN_TYPE_8BYTE)
+        assert utf.schema.ID.feature(COLUMN_TYPE_4BYTE)
+
+        s.__OFFSET_ROW_MAP = {}
+        for i in xrange(len(utf.rows)):
+            s.__OFFSET_ROW_MAP[utf.value('FileOffset', i)[0] + s.TOC_BASELINE] = i
+
+    def __itoc(s, v):
+        utf = v.utf
+
+        assert utf.schema.ID.feature(COLUMN_TYPE_4BYTE2)
+        assert utf.schema.TocIndex.feature(COLUMN_TYPE_4BYTE2)
+
+    def __etoc(s, v):
+        utf = v.utf
+
+        assert utf.schema.UpdateDateTime.feature(COLUMN_TYPE_8BYTE)
+        assert utf.schema.LocalDir.feature(COLUMN_TYPE_STRING)
+
+    __filter = {
+        FRAME_CPK   : __cpk,
+        FRAME_TOC   : __toc,
+        FRAME_ITOC  : __itoc,
+        FRAME_ETOC  : __etoc,
+    }
+
+    def __setitem__(s, k, v):
+        if TableLibrary.__filter[k]:
+            TableLibrary.__filter[k](s, v)
+        dict.__setitem__(s, k, v)
+
+    def offset2row(s, offset):
+        return s.__OFFSET_ROW_MAP[offset]
     pass
 
 ################
@@ -382,11 +431,14 @@ if __name__ == '__main__':
 
     frames = 0
 
+    lib = TableLibrary()
+    
     for frame in readframe(infile):
         if frame.typename in [FRAME_ZERO, FRAME_COPYRIGHT]: 
             # With no Data
             pass
         elif frame.typename in [FRAME_CPK, FRAME_TOC, FRAME_ITOC, FRAME_ETOC]:
+            # If frame is the Index Frame
 
             # @UTF Table Format
             frame.utf = table = UTF(frame.data[0])
@@ -438,6 +490,9 @@ if __name__ == '__main__':
                             continue
                         print COLUMN_TYPE_PRINT[table.columns[i].fieldtype] % row[i],
                     print
+
+            # Register frame to Library
+            lib[frame.typename] = frame
 
         elif frame.typename in [FRAME_CRILAYLA]:
             # CRI Package
