@@ -312,13 +312,25 @@ class UTF:
         f.seek(original, 0)
         return data
 
+COLUMN_TYPE_PRINT = {
+    COLUMN_TYPE_DATA    : '0x%08x(0x%08x)',
+    COLUMN_TYPE_STRING  : '%30s(0x%08x)',
+    COLUMN_TYPE_FLOAT   : '%8.2f',
+    COLUMN_TYPE_8BYTE   : '0x%016x',
+    COLUMN_TYPE_4BYTE2  : '0x%08x',
+    COLUMN_TYPE_4BYTE   : '0x%08x',
+    COLUMN_TYPE_2BYTE2  : '0x%04x',
+    COLUMN_TYPE_2BYTE   : '0x%04x',
+    COLUMN_TYPE_1BYTE2  : '0x%02x',
+    COLUMN_TYPE_1BYTE   : '0x%02x',
+}
 
 if __name__ == '__main__':
 
     LINE_WIDTH = 52
 
     def write_line(strline):
-        print >>stderr, strline * LINE_WIDTH
+        print strline * LINE_WIDTH
 
     import argparse
     from sys import stderr
@@ -343,6 +355,7 @@ if __name__ == '__main__':
             # With no Data
             pass
         elif frame.typename in [FRAME_CPK, FRAME_TOC, FRAME_ITOC, FRAME_ETOC]:
+
             # @UTF Table Format
             table = UTF(frame.data[0])
 
@@ -352,11 +365,34 @@ if __name__ == '__main__':
             print "Schema %s (%s)" % (table.name, frame.typename)
             write_line('-')
             for field in table.schema:
-                print "\t%02x %s" % (field.typeid, field.name)
+                print "\t%02x %30s(0x%08x)" % (field.typeid, field.name, field.nameoffset)
                 if field.feature(COLUMN_STORAGE_CONSTANT):
-                    print "\t\t%s" % (field.data.encode('hex'))
+                    print ("\t > " + COLUMN_TYPE_PRINT[field.fieldtype]) % (field.data)
+            write_line('-')
 
-            pass
+            # print table header
+
+            for i in xrange(table.columns):
+                if table.schema[i].feature([
+                    COLUMN_STORAGE_ZERO, 
+                    COLUMN_STORAGE_CONSTANT,
+                    ]):
+                    continue
+                print '| ' + table.schema[i].name,
+            print '|'
+
+            # print table rows
+
+            for row in table.rows:
+                for i in xrange(table.columns):
+                    if table.schema[i].feature([
+                        COLUMN_STORAGE_ZERO, 
+                        COLUMN_STORAGE_CONSTANT,
+                        ]):
+                        continue
+                    print COLUMN_TYPE_PRINT[table.schema[i].fieldtype] % row[i],
+                print
+
         elif frame.typename in [FRAME_CRILAYLA]:
             # CRI Package
             pass
@@ -370,7 +406,7 @@ if __name__ == '__main__':
         print >>stderr, "0x%010X Found Frame %-16s (0x%06X)\r" % \
                 (frame.offset, frame.typename, len(frame.data[0])),
 
-    write_line('=')
+    print >>stderr, '=' * LINE_WIDTH
     print >>stderr, "Scanner Found %d Frames" % frames
 
     for h, k in FRAME_HEADER_MAP:
