@@ -435,15 +435,32 @@ def deflate_levels():
         yield v
     yield 1
 
+import time
+
+class DeflateProgressIndicator:
+
+    __INTERVAL = 0.1
+
+    def __init__(s, insize, outsize):
+        s.insize, s.outsize = insize, outsize
+        s.tick = 0
+
+    def feed(s, readptr, writeptr):
+        if time.clock() - s.tick < DeflateProgressIndicator.__INTERVAL:
+            return
+        print >>stderr, "                      0x%08x / 0x%08x % 6.2f%% => 0x%08x / 0x%08x % 6.2f%%\r" % (
+                readptr, s.insize, float(readptr) * 100 / s.insize,
+                writeptr, s.outsize, float(writeptr) * 100 / s.outsize),
+        s.tick = time.clock()
+
 from contextlib import nested
 
 def __deflate(indata, size):
     MINIMAL_REFLEN = 3
+    progress = DeflateProgressIndicator(len(indata), size)
     with nested(closing(CompressedIO(indata)), closing(StringIO())) as (f, out):
         while True:
-            print >>stderr, "                      0x%08x / 0x%08x % 6.2f%% => 0x%08x / 0x%08x % 6.2f%%\r" % (
-                    f.tell() / 8, len(indata), float(f.tell() / 8) * 100 / len(indata),
-                    out.tell(), size, float(out.tell()) * 100 / size),
+            progress.feed(f.tell() >> 3, out.tell())
             bit = f.read01(1)
             if bit == '': 
                 break
