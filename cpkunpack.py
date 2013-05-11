@@ -345,8 +345,10 @@ class TableLibrary(dict):
 
         assert utf.schema.ContentOffset.feature(COLUMN_TYPE_8BYTE)
         assert utf.schema.TocOffset.feature(COLUMN_TYPE_8BYTE)
+        assert utf.schema.Files.feature(COLUMN_TYPE_4BYTE)
 
         s.TOC_BASELINE = min(utf.value('ContentOffset')[0], utf.value('TocOffset')[0])
+        s.FILES = utf.value('Files')[0]
 
     def __toc(s, v):
         utf = v.utf
@@ -495,16 +497,11 @@ def uncompress(lib, dataframe):
     #      ^ Uncompressed Data Size      ^ Original File Size
     #                          ^ Uncompressed Header
 
-    # DEBUG
-    print >>stderr, ' ' * 52 + '\r',
-    print >>stderr, '%-30s 0x%08x -> 0x%08x (+0x0100=0x%08x)' % \
-            (row.FileName[0], datasize, uncompressed_size, uncompressed_size + 0x0100)
-
     # Uncompress
     data = __deflate(dataframe.data[0], uncompressed_size)
     if len(data) != uncompressed_size:
-        print "WARNING! Extracted %s DataSize mismatch with TOC record (%d <Uncompressed|TOC> %d -- %0.2f%%)" % \
-                (row.FileName[0], len(data), uncompressed_size, float(len(data)) * 100 / uncompressed_size)
+        print "WARNING! Extracted %s->%s DataSize mismatch with TOC record (%d <Uncompressed|TOC> %d -- %0.2f%%)" % \
+                (row.DirName[0], row.FileName[0], len(data), uncompressed_size, float(len(data)) * 100 / uncompressed_size)
         # Padding with \x00
         data += '\x00' * (uncompressed_size - len(data))
 
@@ -573,9 +570,18 @@ if __name__ == '__main__':
 
     frames = 0
 
+    files = 0
+
     lib = TableLibrary()
     
     for frame in readframe(infile):
+
+        # Statistic Information
+        STAT[frame.typename] += 1
+        frames += 1
+        print >>stderr, "0x%010X Found Frame %-16s (0x%06X)\r" % \
+                (frame.offset, frame.typename, len(frame.data[0])),
+
         if frame.typename in [FRAME_ZERO, FRAME_COPYRIGHT]: 
             # With no Data
             pass
@@ -638,18 +644,31 @@ if __name__ == '__main__':
 
         elif frame.typename in [FRAME_CRILAYLA]:
             # CRI Package
+
+            files += 1
+
             row = lib.fromoffset(frame.offset)
+
+            # DEBUG
+            print >>stderr, ' ' * LINE_WIDTH + '\r',
+            print >>stderr, '(% 4d/%d) %-30s 0x%08x -> 0x%08x (+0x0100=0x%08x)' % \
+                    (files, lib.FILES, row.FileName[0], row.FileSize[0] - 0x110, row.ExtractSize[0] - 0x100, row.ExtractSize[0])
+
             writefile(args.output, row, uncompress(lib, frame))
         else:
             # Raw File Frame
-            row = lib.fromoffset(frame.offset)
-            writefile(args.output, row, frame.data[0])
 
-        # Statistic Information
-        STAT[frame.typename] += 1
-        frames += 1
-        print >>stderr, "0x%010X Found Frame %-16s (0x%06X)\r" % \
-                (frame.offset, frame.typename, len(frame.data[0])),
+            files += 1
+
+            row = lib.fromoffset(frame.offset)
+
+            assert row.FileSize[0] == row.ExtractSize[0]
+
+            print >>stderr, ' ' * LINE_WIDTH + '\r',
+            print >>stderr, '(% 4d/%d) %-30s 0x%08x' % \
+                    (files, lib.FILES, row.FileName[0], row.FileSize[0])
+
+            writefile(args.output, row, frame.data[0])
 
     print >>stderr, '=' * LINE_WIDTH
     print >>stderr, "Scanner Found %d Frames" % frames
