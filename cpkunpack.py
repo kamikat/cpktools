@@ -441,9 +441,9 @@ def __deflate(indata, size):
     MINIMAL_REFLEN = 3
     with nested(closing(CompressedIO(indata)), closing(StringIO())) as (f, out):
         while True:
-            # print >>stderr, "        0x%08x / 0x%08x (%0.2f%%) => 0x%08x / 0x%08x (%0.2f%%)\r" % (
-            #         f.tell() / 8, len(indata), float(f.tell() / 8) * 100 / len(indata),
-            #         out.tell(), size, float(out.tell()) * 100 / size),
+            print >>stderr, "                      0x%08x / 0x%08x % 6.2f%% => 0x%08x / 0x%08x % 6.2f%%\r" % (
+                    f.tell() / 8, len(indata), float(f.tell() / 8) * 100 / len(indata),
+                    out.tell(), size, float(out.tell()) * 100 / size),
             bit = f.read01(1)
             if bit == '': 
                 break
@@ -474,7 +474,6 @@ def __deflate(indata, size):
             else:
                 # verbatim byte
                 out.write(f.readbyte())
-        # print >>stderr
         return out.getvalue()[:size][::-1]
 
 def uncompress(lib, dataframe):
