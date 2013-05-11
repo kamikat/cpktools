@@ -441,7 +441,7 @@ class CompressedIO:
 def deflate_levels():
     for v in [2, 3, 5, 8]:
         yield v
-    yield 1
+    yield 8
 
 import time
 
