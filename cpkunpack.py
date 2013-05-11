@@ -436,27 +436,35 @@ def deflate_levels():
 from contextlib import nested
 
 def __deflate(indata, size):
+    MINIMAL_REFLEN = 3
     with nested(closing(CompressedIO(indata)), closing(StringIO())) as (f, out):
         while True:
-            print >>stderr, "%d / %d => %d / %d (%.2f)\r" % (f.tell() / 8, len(indata), out.tell(), size, float(out.tell()) * 100 / size),
+            # print >>stderr, "        0x%08x / 0x%08x (%0.2f%%) => 0x%08x / 0x%08x (%0.2f%%)\r" % (
+            #         f.tell() / 8, len(indata), float(f.tell() / 8) * 100 / len(indata),
+            #         out.tell(), size, float(out.tell()) * 100 / size),
             bit = f.read01(1)
             if bit == '': 
                 break
             if int(bit, 2):
-                assert out.tell() > 3
+
                 offset = f.readnum(13)
-                refc = 3
+                refc = MINIMAL_REFLEN
+
                 for lv in deflate_levels():
                     bits = f.read(lv)
                     refc += int(bits.to01(), 2)
                     if not bits.all():
                         break
+
                 # assert offset >= refc - 3
                 for i in xrange(refc):
                     original = out.tell()
                     # read referenced bytes
-                    out.seek(-offset-3, 1)
-                    ref = out.read(1)
+                    if out.tell() - offset - MINIMAL_REFLEN < 0:
+                        ref = '\x00'
+                    else:
+                        out.seek(-offset-MINIMAL_REFLEN, 1)
+                        ref = out.read(1)
                     # seek to the end
                     out.seek(0, 2)
                     assert out.tell() == original
@@ -464,7 +472,7 @@ def __deflate(indata, size):
             else:
                 # verbatim byte
                 out.write(f.readbyte())
-        print >>stderr
+        # print >>stderr
         return out.getvalue()[::-1][:size]
 
 def uncompress(lib, dataframe):
@@ -489,11 +497,17 @@ def uncompress(lib, dataframe):
 
     # DEBUG
     print >>stderr, ' ' * 52 + '\r',
-    print >>stderr, '%-30s 0x%08x -> 0x%08x (+0x0100=0x%08x)' % (row.FileName[0], datasize, uncompressed_size, uncompressed_size + 0x0100)
+    print >>stderr, '%-30s 0x%08x -> 0x%08x (+0x0100=0x%08x)' % \
+            (row.FileName[0], datasize, uncompressed_size, uncompressed_size + 0x0100)
 
     # Uncompress
     data = __deflate(dataframe.data[0], uncompressed_size)
-    assert len(data) == uncompressed_size
+    if len(data) != uncompressed_size:
+        print "WARNING! Extracted %s DataSize mismatch with TOC record (%d <Uncompressed|TOC> %d -- %0.2f%%)" % \
+                (row.FileName[0], len(data), uncompressed_size, float(len(data)) * 100 / uncompressed_size)
+        # Padding with \x00
+        data += '\x00' * (uncompressed_size - len(data))
+
     return (row.DirName[0], row.FileName[0], dataframe.data[1] + data)
 
 ################
