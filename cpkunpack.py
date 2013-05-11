@@ -445,8 +445,8 @@ class DeflateProgressIndicator:
         s.insize, s.outsize = insize, outsize
         s.tick = 0
 
-    def feed(s, readptr, writeptr):
-        if time.clock() - s.tick < DeflateProgressIndicator.__INTERVAL:
+    def feed(s, readptr, writeptr, force=False):
+        if time.clock() - s.tick < DeflateProgressIndicator.__INTERVAL and not force:
             return
         print >>stderr, "                      0x%08x / 0x%08x % 6.2f%% => 0x%08x / 0x%08x % 6.2f%%\r" % (
                 readptr, s.insize, float(readptr) * 100 / s.insize,
@@ -491,6 +491,7 @@ def __deflate(indata, size):
             else:
                 # verbatim byte
                 out.write(f.readbyte())
+        progress.feed(f.tell() >> 3, out.tell(), True)
         return out.getvalue()[:size][::-1]
 
 def uncompress(lib, dataframe):
