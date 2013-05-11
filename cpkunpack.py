@@ -508,7 +508,25 @@ def uncompress(lib, dataframe):
         # Padding with \x00
         data += '\x00' * (uncompressed_size - len(data))
 
-    return (row.DirName[0], row.FileName[0], dataframe.data[1] + data)
+    return dataframe.data[1] + data
+
+####################
+# Utility Fragment #
+####################
+
+import os, errno
+
+def writefile(root, row, data):
+    dirname = os.path.join(root, row.DirName[0])
+    try:
+        os.makedirs(dirname)
+    except OSError as exc: # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(dirname):
+            pass
+        else: raise
+    
+    with open(os.path.join(dirname, row.FileName[0]), 'wb') as f:
+        return f.write(data)
 
 ################
 # CLI Fragment #
@@ -539,6 +557,9 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='unpack a cpk archive')
     parser.add_argument('input', help='Input CPK file')
+    parser.add_argument('-o', '--output-dir', 
+            default='output', dest='output',
+            help='Output directory (default "output")')
     args = parser.parse_args()
 
     infile = open(args.input, 'rb')
@@ -617,11 +638,12 @@ if __name__ == '__main__':
 
         elif frame.typename in [FRAME_CRILAYLA]:
             # CRI Package
-            uncompress(lib, frame)
-            pass
+            row = lib.fromoffset(frame.offset)
+            writefile(args.output, row, uncompress(lib, frame))
         else:
             # Raw File Frame
-            pass
+            row = lib.fromoffset(frame.offset)
+            writefile(args.output, row, frame.data[0])
 
         # Statistic Information
         STAT[frame.typename] += 1
