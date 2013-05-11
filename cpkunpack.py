@@ -473,7 +473,7 @@ def __deflate(indata, size):
                 # verbatim byte
                 out.write(f.readbyte())
         # print >>stderr
-        return out.getvalue()[::-1][:size]
+        return out.getvalue()[:size][::-1]
 
 def uncompress(lib, dataframe):
 
