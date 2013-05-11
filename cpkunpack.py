@@ -427,6 +427,14 @@ class CompressedIO:
     def tell(s):
         return s.pos
 
+    def seek(s, offset, t = 0):
+        if t == 0:
+            s.pos = offset
+        elif t == 1:
+            s.pos += offset
+        elif t == 2:
+            s.pos = len(data) - 1 - offset
+
     def close(s):
         s.b = None
 
