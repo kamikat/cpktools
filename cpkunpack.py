@@ -526,7 +526,7 @@ def writefile(root, row, data):
         else: raise
     
     with open(os.path.join(dirname, row.FileName[0]), 'wb') as f:
-        return f.write(data)
+        return f.write(data[:row.ExtractSize[0]])
 
 ################
 # CLI Fragment #
