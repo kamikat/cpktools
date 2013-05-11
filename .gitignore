@@ -4,3 +4,4 @@
 *.txt
 *.py[cod]
 *.log
+output/*
