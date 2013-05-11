@@ -40,7 +40,7 @@ def identify(header, nofail=False):
     if not nofail:
         raise Exception('Unable to recognize frame for "%s"' % repr(header));
 
-from StringIO import StringIO
+from cStringIO import StringIO
 from struct import unpack
 from contextlib import closing
 
