@@ -399,8 +399,73 @@ class Row:
     def __getattr__(s, key):
         return s.utf.value(key, s.rowid)
 
-def __deflate(fin, fout):
-    pass
+from bitarray import bitarray
+
+class CompressedIO:
+
+    def __init__(s, indata):
+        s.b = bitarray()
+        s.b.frombytes(indata[::-1])
+        s.pos = 0
+
+    def read(s, length):
+        data = s.b[s.pos:s.pos+length]
+        s.pos += length
+        return data
+
+    def read01(s, length):
+        return s.read(length).to01()
+
+    def readnum(s, length):
+        return int(s.read01(length), 2)
+
+    def readbyte(s, length = 1):
+        return s.read(length * 8).tobytes()
+
+    def tell(s):
+        return s.pos
+
+    def close(s):
+        s.b = None
+
+def deflate_levels():
+    for v in [2, 3, 5, 8]:
+        yield v
+    yield 1
+
+from contextlib import nested
+
+def __deflate(indata, size):
+    with nested(closing(CompressedIO(indata)), closing(StringIO())) as (f, out):
+        while True:
+            print >>stderr, "%d / %d => %d / %d (%.2f)\r" % (f.tell() / 8, len(indata), out.tell(), size, float(out.tell()) * 100 / size),
+            bit = f.read01(1)
+            if bit == '': 
+                break
+            if int(bit, 2):
+                assert out.tell() > 3
+                offset = f.readnum(13)
+                refc = 3
+                for lv in deflate_levels():
+                    bits = f.read(lv)
+                    refc += int(bits.to01(), 2)
+                    if not bits.all():
+                        break
+                # assert offset >= refc - 3
+                for i in xrange(refc):
+                    original = out.tell()
+                    # read referenced bytes
+                    out.seek(-offset-3, 1)
+                    ref = out.read(1)
+                    # seek to the end
+                    out.seek(0, 2)
+                    assert out.tell() == original
+                    out.write(ref)
+            else:
+                # verbatim byte
+                out.write(f.readbyte())
+        print >>stderr
+        return out.getvalue()[::-1][:size]
 
 def uncompress(lib, dataframe):
 
@@ -426,15 +491,10 @@ def uncompress(lib, dataframe):
     print >>stderr, ' ' * 52 + '\r',
     print >>stderr, '%-30s 0x%08x -> 0x%08x (+0x0100=0x%08x)' % (row.FileName[0], datasize, uncompressed_size, uncompressed_size + 0x0100)
 
-    with closing(StringIO(dataframe.data[1])) as data:
-        data.seek(0, 2)
-        assert data.tell() == 0x0100
-        with closing(StringIO(dataframe.data[0])) as f:
-            # Uncompress
-            __deflate(f, data)
-        data.seek(0, 2)
-        assert data.tell() == row.ExtractSize[0] - 1
-        return (row.DirName[0], row.FileName[0], data.getvalue())
+    # Uncompress
+    data = __deflate(dataframe.data[0], uncompressed_size)
+    assert len(data) == uncompressed_size
+    return (row.DirName[0], row.FileName[0], dataframe.data[1] + data)
 
 ################
 # CLI Fragment #
