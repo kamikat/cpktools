@@ -583,7 +583,7 @@ COLUMN_TYPE_PRINT = {
 
 if __name__ == '__main__':
 
-    LINE_WIDTH = 52
+    LINE_WIDTH = 88
 
     def write_line(strline):
         print strline * LINE_WIDTH
@@ -596,6 +596,9 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output-dir', 
             default='output', dest='output',
             help='Output directory (default "output")')
+    parser.add_argument('-s', '--skip',
+            default=0, dest='skip', type=int,
+            help='Skip previous N files')
     args = parser.parse_args()
 
     infile = open(args.input, 'rb')
@@ -678,6 +681,8 @@ if __name__ == '__main__':
                         print COLUMN_TYPE_PRINT[table.columns[i].fieldtype] % row[i],
                     print
 
+            write_line('=')
+
             # Register frame to Library
             lib[frame.typename] = frame
 
@@ -689,8 +694,14 @@ if __name__ == '__main__':
             row = lib.fromoffset(frame.offset)
 
             # DEBUG
-            print >>stderr, '(%4d/%d) %-30s 0x%08x -> 0x%08x (+0x0100=0x%08x)' % \
-                    (files, lib.FILES, row.FileName[0], row.FileSize[0] - 0x110, row.ExtractSize[0] - 0x100, row.ExtractSize[0])
+            print >>stderr, '(%4d/%4d) %-30s 0x%08x -> 0x%08x (+0x0100=0x%08x)' % \
+                    (files, lib.FILES, row.FileName[0], row.FileSize[0] - 0x110, row.ExtractSize[0] - 0x100, row.ExtractSize[0]),
+
+            if files <= args.skip:
+                print >>stderr, '\r(%4d/SKIP)' % files
+                continue
+
+            print >>stderr
 
             writefile(args.output, row, uncompress(lib, frame))
         else:
@@ -702,9 +713,14 @@ if __name__ == '__main__':
 
             assert row.FileSize[0] == row.ExtractSize[0]
 
-            print >>stderr, ' ' * LINE_WIDTH + '\r',
-            print >>stderr, '(%4d/%d) %-30s 0x%08x%35s' % \
-                    (files, lib.FILES, row.FileName[0], row.FileSize[0], '')
+            print >>stderr, '(%4d/%4d) %-30s 0x%08x%35s' % \
+                    (files, lib.FILES, row.FileName[0], row.FileSize[0], ''),
+
+            if files <= args.skip:
+                print >>stderr, '\r(%4d/SKIP)' % files
+                continue
+
+            print >>stderr
 
             writefile(args.output, row, frame.data[0])
 
