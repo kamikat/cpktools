@@ -119,7 +119,9 @@ while True:
             print "0x%010X Found Header: %s" % (infile.tell(), marker)
 
         data = infile.read(size)
-        outfile.write(chiper(data))
+        if not marker.startswith('CRILAYLA'):
+            data = chiper(data)
+        outfile.write(data)
         print "0x%010X Found Data Block(0x%08X)" % (infile.tell(), size)
 
         if marker.startswith("CRILAYLA"):
