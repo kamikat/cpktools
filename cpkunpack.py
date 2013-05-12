@@ -457,7 +457,7 @@ class DeflateProgressIndicator:
     def feed(s, readptr, writeptr, force=False):
         if time.clock() - s.tick < DeflateProgressIndicator.__INTERVAL and not force:
             return
-        print >>stderr, "                      0x%08x / 0x%08x % 6.2f%% => 0x%08x / 0x%08x % 6.2f%%\r" % (
+        print >>stderr, "                      0x%08x / 0x%08x%7.2f%% => 0x%08x / 0x%08x%7.2f%%\r" % (
                 readptr, s.insize, float(readptr) * 100 / s.insize,
                 writeptr, s.outsize, float(writeptr) * 100 / s.outsize),
         s.tick = time.clock()
@@ -689,8 +689,7 @@ if __name__ == '__main__':
             row = lib.fromoffset(frame.offset)
 
             # DEBUG
-            print >>stderr, ' ' * LINE_WIDTH + '\r',
-            print >>stderr, '(% 4d/%d) %-30s 0x%08x -> 0x%08x (+0x0100=0x%08x)' % \
+            print >>stderr, '(%4d/%d) %-30s 0x%08x -> 0x%08x (+0x0100=0x%08x)' % \
                     (files, lib.FILES, row.FileName[0], row.FileSize[0] - 0x110, row.ExtractSize[0] - 0x100, row.ExtractSize[0])
 
             writefile(args.output, row, uncompress(lib, frame))
@@ -704,8 +703,8 @@ if __name__ == '__main__':
             assert row.FileSize[0] == row.ExtractSize[0]
 
             print >>stderr, ' ' * LINE_WIDTH + '\r',
-            print >>stderr, '(% 4d/%d) %-30s 0x%08x' % \
-                    (files, lib.FILES, row.FileName[0], row.FileSize[0])
+            print >>stderr, '(%4d/%d) %-30s 0x%08x%35s' % \
+                    (files, lib.FILES, row.FileName[0], row.FileSize[0], '')
 
             writefile(args.output, row, frame.data[0])
 
