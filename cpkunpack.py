@@ -483,7 +483,12 @@ def __deflate(indata, size):
                     if not bits.all():
                         break
 
-                # assert offset >= refc - 3
+                # DEBUG
+                # curptr = out.tell()
+                # refs = curptr - offset - MINIMAL_REFLEN
+                # s = out.getvalue()[refs: min(refs + refc, curptr)]
+                # print >>stderr, 'Control 1 0x%08x(-0x%04x-0x03)=0x%08x 0x%04x (0x%04x)%s' % (curptr, offset, refs, refc, len(s), repr(s))
+
                 for i in xrange(refc):
                     original = out.tell()
                     # read referenced bytes
@@ -498,7 +503,14 @@ def __deflate(indata, size):
                     out.write(ref)
             else:
                 # verbatim byte
-                out.write(f.readbyte())
+                b = f.readbyte()
+
+                # DEBUG
+                # print >>stderr, 'Control 0 0x%08x %s' % (out.tell(), repr(b))
+
+                out.write(b)
+
+        # Force flush a log
         progress.feed(f.tell() >> 3, out.tell(), True)
         return out.getvalue()[:size][::-1]
 
@@ -524,11 +536,12 @@ def uncompress(lib, dataframe):
 
     # Uncompress
     data = __deflate(dataframe.data[0], uncompressed_size)
-    if len(data) != uncompressed_size:
-        print "WARNING! Extracted %s->%s DataSize mismatch with TOC record (%d <Uncompressed|TOC> %d -- %0.2f%%)" % \
-                (row.DirName[0], row.FileName[0], len(data), uncompressed_size, float(len(data)) * 100 / uncompressed_size)
-        # Padding with \x00
-        data += '\x00' * (uncompressed_size - len(data))
+    assert len(data) == uncompressed_size
+    # if len(data) != uncompressed_size:
+    #     print "WARNING! Extracted %s->%s DataSize mismatch with TOC record (%d <Uncompressed|TOC> %d -- %0.2f%%)" % \
+    #             (row.DirName[0], row.FileName[0], len(data), uncompressed_size, float(len(data)) * 100 / uncompressed_size)
+    #     # Padding with \x00
+    #     data += '\x00' * (uncompressed_size - len(data))
 
     return dataframe.data[1] + data
 
