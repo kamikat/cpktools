@@ -16,10 +16,8 @@ You will need Python 2.x to run scripts.
 
 Extra dependency `bitarray` can be installed from python-pip
 
-```bash
-
-#python-pip install bitarray
-
+```
+# python-pip install bitarray
 ```
 
 Usage
@@ -27,10 +25,8 @@ Usage
 
 For usage detail, please run
 
-```bash
-
-$<Command> --help
-
+```
+$ <Command> --help
 ```
 
 Extend work to these scripts is appreciative.
