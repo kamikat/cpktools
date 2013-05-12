@@ -490,16 +490,15 @@ def __deflate(indata, size):
                 # s = out.getvalue()[refs: min(refs + refc, curptr)]
                 # print >>stderr, 'Control 1 0x%08x(-0x%04x-0x03)=0x%08x 0x%04x (0x%04x)%s' % (curptr, offset, refs, refc, len(s), repr(s))
 
+                assert out.tell() >= offset + MINIMAL_REFLEN
+
                 for i in xrange(refc):
                     original = out.tell()
                     # read referenced bytes
-                    if out.tell() - offset - MINIMAL_REFLEN < 0:
-                        ref = '\x00'
-                    else:
-                        out.seek(-offset-MINIMAL_REFLEN, 1)
-                        ref = out.read(1)
-                    # seek to the end
+                    out.seek(-offset-MINIMAL_REFLEN, 1)
+                    ref = out.read(1)
                     out.seek(0, 2)
+                    # seek to the end
                     assert out.tell() == original
                     out.write(ref)
             else:
