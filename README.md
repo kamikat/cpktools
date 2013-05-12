@@ -9,6 +9,9 @@ Tools
 
 * `cpkunpack.py` unpack a cpk file
 
+  It is recommended that redirect the `stdout` of the script to a file
+  (the script print the HEADER, TOC, ITOC and ETOC information to `stdout`)
+
 * `screxport.py` search and extract shift-jis string from script file
   (scr.bin) with tag prefixed
 
@@ -17,6 +20,9 @@ Tools
 
 * `scrimport.py` replace the edited script string into source script file
   (scr.bin) according to the prefix tag
+
+  A text file with prefix tag can be splitted randomly and the importer will
+  accept a splitted clip of files as parameter
 
 Installation
 ------------
