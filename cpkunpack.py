@@ -475,7 +475,7 @@ def __deflate(indata, size):
                 break
             if int(bit, 2):
 
-                offset = f.readnum(13)
+                offset = f.readnum(13) + MINIMAL_REFLEN
                 refc = MINIMAL_REFLEN
 
                 for lv in deflate_levels():
@@ -486,21 +486,20 @@ def __deflate(indata, size):
 
                 # DEBUG
                 # curptr = out.tell()
-                # refs = curptr - offset - MINIMAL_REFLEN
+                # refs = curptr - offset
                 # s = out.getvalue()[refs: min(refs + refc, curptr)]
-                # print >>stderr, 'Control 1 0x%08x(-0x%04x-0x03)=0x%08x 0x%04x (0x%04x)%s' % (curptr, offset, refs, refc, len(s), repr(s))
+                # print >>stderr, 'Control 1 0x%08x(-0x%04x)=0x%08x 0x%04x (0x%04x)%s' % (curptr, offset, refs, refc, len(s), repr(s))
 
-                assert out.tell() >= offset + MINIMAL_REFLEN
+                assert out.tell() >= offset
 
-                for i in xrange(refc):
-                    original = out.tell()
+                while refc > 0:
                     # read referenced bytes
-                    out.seek(-offset-MINIMAL_REFLEN, 1)
-                    ref = out.read(1)
+                    out.seek(-offset, 1)
+                    ref = out.read(refc)
                     out.seek(0, 2)
-                    # seek to the end
-                    assert out.tell() == original
                     out.write(ref)
+                    refc -= len(ref)
+
             else:
                 # verbatim byte
                 b = f.readbyte()
