@@ -538,11 +538,6 @@ def uncompress(lib, dataframe):
     # Uncompress
     data = __deflate(dataframe.data[0], uncompressed_size)
     assert len(data) == uncompressed_size
-    # if len(data) != uncompressed_size:
-    #     print "WARNING! Extracted %s->%s DataSize mismatch with TOC record (%d <Uncompressed|TOC> %d -- %0.2f%%)" % \
-    #             (row.DirName[0], row.FileName[0], len(data), uncompressed_size, float(len(data)) * 100 / uncompressed_size)
-    #     # Padding with \x00
-    #     data += '\x00' * (uncompressed_size - len(data))
 
     return dataframe.data[1] + data
 
