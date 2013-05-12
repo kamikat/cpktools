@@ -9,6 +9,15 @@ Tools
 
 * `cpkunpack.py` unpack a cpk file
 
+* `screxport.py` search and extract shift-jis string from script file
+  (scr.bin) with tag prefixed
+
+  The search is based on some properties of embedded text, thus **cannot** 
+  be applied to a compressed or encrypted script file.
+
+* `scrimport.py` replace the edited script string into source script file
+  (scr.bin) according to the prefix tag
+
 Installation
 ------------
 
