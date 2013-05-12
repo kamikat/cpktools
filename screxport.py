@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 
+import argparse
+
+parser = argparse.ArgumentParser(description='Scan file to find shift-jis string')
+parser.add_argument('input', help='scenario file')
+args = parser.parse_args()
+
 import struct
 
-data = open('scr.bin', 'rb').read()
-
-output = open('scr.utf8.txt', 'w')
+data = open(args.input, 'rb').read()
 
 length = len(data)
 
@@ -14,6 +18,8 @@ for i in xrange(length - 2):
         continue
     if val > length:
         continue
+    if val % 2 != 0:
+        continue
     if data[i+val-2:i+val] != '\x00\x00':
         continue
     try:
@@ -22,9 +28,8 @@ for i in xrange(length - 2):
             if char < "\x1f":
                strline = ""
         if len(strline) > 0:
-            print >>output, "0x%010X-0x%010X(0x%04X)\t%s\r" % \
+            print "0x%010X-0x%010X(0x%04X)\t%s\r" % \
                     (i, i + val, val, strline.encode('utf-8'))
     except:
         continue
 
-output.close()
