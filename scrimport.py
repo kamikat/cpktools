@@ -37,7 +37,10 @@ with open(args.output, 'wb') as output:
 
     for line in txt:
 
-        (start, end, length, text) = unpack_line(line)
+        try:
+            (start, end, length, text) = unpack_line(line)
+        except:
+            continue
 
         output.write(src[srcptr:int(start, 0)])
 
