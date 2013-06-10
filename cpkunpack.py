@@ -334,6 +334,9 @@ class UTF:
     def value(s, key, row = 0):
         return s.rows[row][s.key2idx[key]]
 
+    def gettimevalue(s, key, row = 0):
+        return struct.unpack('BBBBBBH', struct.pack('<Q', s.value(key, row)))[::-1]
+
 #######################
 # Uncompress Fragment #
 #######################
