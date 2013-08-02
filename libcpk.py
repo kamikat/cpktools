@@ -46,6 +46,52 @@ def UTFChiper(data, c=0x5f, m=0x15):
         c = c * m & 0b11111111
     return (c, m, v.tostring())
 
+class UTFTableIO:
+
+    def __init__(s, istream=None, ostream=None, encrypted=False, key=(0x5f, 0x15)):
+        s.istream = istream
+        s.ostream = ostream
+        s._istart = 0
+        s._ostart = 0
+        s.encrypted = encrypted
+
+        if s.encrypted:
+            # key used for encrypt
+            (s.ikeyc, s.ikeym) = key
+            (s.okeyc, s.okeym) = key
+
+    def read(s, fmt=None, n=-1):
+        if int == type(fmt):
+            fmt = None
+            n = fmt
+        if fmt:
+            return unpack(fmt, s.read(calcsize(fmt)))
+        else:
+            data = s.istream.read(n)
+            if s.encrypted:
+                (s.ikeyc, s.ikeym, data) = UTFChiper(data, s.ikeyc, s.ikeym)
+            return data
+
+    def write(s, b, fmt=None):
+        if fmt:
+            return s.write(pack(fmt, *b))
+        else:
+            if s.encrypted:
+                (s.okeyc, s.okeym, b) = UTFChiper(b, s.okeyc, s.okeym)
+            return s.ostream.write(b)
+
+    def istart(s):
+        return s._istart = s.istream.tell()
+
+    def ostart(s):
+        return s._ostart = s.ostream.tell()
+
+    def itell(s):
+        return s.istream.tell() - s._istart
+
+    def otell(s):
+        return s.ostream.tell() - s._ostart
+
 class AttributeDict(dict): 
     __getattr__ = dict.__getitem__
     __setattr__ = dict.__setitem__
