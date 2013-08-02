@@ -169,14 +169,80 @@ class Row(AttributeDict):
 class UTFTable:
     """@UTF Table Structure"""
 
+    STRUCT_UTF_HEADER = '>4sL'
+    STRUCT_CONTENT_HEADER = '>LLLLHHL'
+
     def __init__(s):
         s.string_table = None
-        s.rows = None
-        s.cols = None
+        s.rows = []
+        s.cols = []
 
     @classmethod
-    def parse(s, data):
-        pass
+    def parse(cls, f):
+        s = cls();
+
+        # @UTF Header Validation
+        marker = f.read(4)
+        if marker == '\x1F\x9E\xF3\xF5':
+            s.encrypted = True
+        else if marker == '@UTF':
+            s.encrypted = False
+        else:
+            raise Exception("Invalid UTF Table Marker")
+        f.seek(-4, 1);
+
+        # IO Wrapper
+        io = s.io = UTFTableIO(f, encrypted=s.encrypted)
+
+        # @UTF Headers
+        (
+                s.marker, 
+                s.table_size, 
+        ) = io.read(STRUCT_UTF_HEADER)
+
+        assert s.marker == '@UTF'
+
+        # assert len(table_content) == s.table_size
+
+        # Setup start flag for new section
+        io.istart()
+
+        # Table Headers
+        (
+                s.rows_offset, 
+                s.string_table_offset, 
+                s.data_offset, # always == s.table_size
+                s.table_name_string, 
+                s.column_length, 
+                s.row_width, 
+                s.row_length
+        ) = io.read(STRUCT_CONTENT_HEADER)
+
+        assert s.data_offset == s.table_size
+
+        ## Columns
+
+        while len(s.cols) < s.column_length:
+            s.cols.append(Column.parse(s, io));
+
+        assert io.itell() == s.rows_offset
+
+        ## Rows
+
+        while len(s.rows) < s.row_length:
+            s.rows.append(Row.parse(s, io));
+
+        assert io.itell() == s.string_table_offset
+
+        ## String Table
+
+        string_table_sz = s.table_size - s.string_table_offset
+
+        s.string_table = StringTable.parse(io.read(string_table_sz))
+
+        assert io.itell() == s.data_offset
+
+        return s
 
     def dump(s):
         pass
