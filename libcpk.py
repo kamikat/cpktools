@@ -37,15 +37,14 @@ COLUMN_TYPE_MAP = {
     COLUMN_TYPE_1BYTE   : '>B',
 }
 
-def UTFChiper(data):
+def UTFChiper(data, c=0x5f, m=0x15):
     """Chiper for @UTF Table"""
 
-    c, m = (0x5f, 0x15)
     v = array('B', data)
     for i in xrange(len(v)):
         v[i] = v[i] ^ c & 0b11111111
         c = c * m & 0b11111111
-    return v.tostring()
+    return (c, m, v.tostring())
 
 class AttributeDict(dict): 
     __getattr__ = dict.__getitem__
