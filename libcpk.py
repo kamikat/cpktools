@@ -157,20 +157,28 @@ class Column:
 
         return s;
 
-    def value(s, io):
-        val = None
-        if s.feature(COLUMN_STORAGE_CONSTANT):
-            val = s.const
-        elif s.feature(COLUMN_STORAGE_ZERO):
-            val = ()
-        elif s.feature(COLUMN_STORAGE_PERROW):
-            pattern = COLUMN_TYPE_MAP[s.fieldtype]
-            if not pattern:
-                raise Exception("Unknown Type 0x%02x" % s.fieldtype)
-            val = io.read(pattern)
-        # if s.feature(COLUMN_TYPE_STRING):
-        #     val = (utf.getstring(f, col_data[0]), col_data[0])
-        return val
+    def value(s, io, val=None):
+        if not val:
+            if s.feature(COLUMN_STORAGE_CONSTANT):
+                val = s.const
+            elif s.feature(COLUMN_STORAGE_ZERO):
+                val = ()
+            elif s.feature(COLUMN_STORAGE_PERROW):
+                pattern = COLUMN_TYPE_MAP[s.fieldtype]
+                if not pattern:
+                    raise Exception("Unknown Type 0x%02x" % s.fieldtype)
+                val = io.read(pattern)
+            # if s.feature(COLUMN_TYPE_STRING):
+            #     val = (utf.getstring(f, col_data[0]), col_data[0])
+            return val
+        else:
+            if s.feature(COLUMN_STORAGE_PERROW):
+                pattern = COLUMN_TYPE_MAP[s.fieldtype]
+                if not pattern:
+                    raise Exception("Unknown Type 0x%02x" % s.fieldtype)
+                return io.write((val), fmt=pattern);
+            else:
+                return None
 
     def feature(s, typeid):
         if type(typeid) == list:
