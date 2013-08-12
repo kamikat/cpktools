@@ -194,15 +194,21 @@ class Row(AttributeDict):
     """@UTF Table Data Row (Mutable)"""
 
     def __init__(s, utf):
-        pass
+        s.utf = utf
+        s.row = []
 
     @classmethod
-    def parse(cls, utf, data):
-        pass
+    def parse(cls, utf, io):
+        s = cls(utf)
 
+        for col in s.utf.cols:
+            s.row.append((col, col.value(io)))
+
+        return s
 
     def dump(s, io):
-        pass
+        for v in s.row:
+            v[0].value(io, v[1]);
 
 class UTFTable:
     """@UTF Table Structure"""
