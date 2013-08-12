@@ -274,6 +274,12 @@ class UTFTable:
 
         return s
 
+    def string(s, v=None):
+        if v:
+            return s.string_table[v]
+        else:
+            return s.string_table[s.nameoffset]
+
     def dump(s, io):
         pass
 
