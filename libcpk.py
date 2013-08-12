@@ -128,10 +128,8 @@ class StringTable:
             # What if queried offset does not exists?
             return s.__map_otos[key]
 
-    def dump(s):
-        return '\x00'.join(s.entry) + '\x00';
-
-    __str__ = dump
+    def dump(s, io):
+        return io.write('\x00'.join(s.entry) + '\x00')
 
 class Column:
     """@UTF Table Column"""
@@ -146,10 +144,8 @@ class Column:
     def feature(s, typeid):
         pass
 
-    def dump(s):
-        pass
 
-    __str__ = dump
+    def dump(s, io):
 
 class Row(AttributeDict):
     """@UTF Table Data Row (Mutable)"""
@@ -161,10 +157,9 @@ class Row(AttributeDict):
     def parse(cls, utf, data):
         pass
 
-    def dump(s):
-        pass
 
-    __str__ = dump
+    def dump(s, io):
+        pass
 
 class UTFTable:
     """@UTF Table Structure"""
@@ -244,7 +239,6 @@ class UTFTable:
 
         return s
 
-    def dump(s):
+    def dump(s, io):
         pass
 
-    __str__ = dump
