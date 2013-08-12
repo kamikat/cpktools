@@ -134,18 +134,53 @@ class StringTable:
 class Column:
     """@UTF Table Column"""
 
+    STRUCT_SCHEMA_DEF = '>BL'
+
     def __init__(s, utf):
         s.utf = utf
 
     @classmethod
-    def parse(cls, utf, data):
-        pass
+    def parse(cls, utf, io):
+        s = cls(utf)
+
+        (typeid, s.nameoffset) = io.read(STRUCT_SCHEMA_DEF);
+
+        s.storagetype = typeid & COLUMN_STORAGE_MASK
+        s.fieldtype = typeid & COLUMN_TYPE_MASK
+
+        if s.feature(COLUMN_STORAGE_CONSTANT):
+            pattern = COLUMN_TYPE_MAP[s.fieldtype]
+            if not pattern:
+                raise Exception("Unknown Type 0x%02x" % s.fieldtype)
+            col_data = io.read(pattern)
+            s.const = col_data
+
+        return s;
+
+    def value(s, io):
+        val = None
+        if s.feature(COLUMN_STORAGE_CONSTANT):
+            val = s.const
+        elif s.feature(COLUMN_STORAGE_ZERO):
+            val = ()
+        elif s.feature(COLUMN_STORAGE_PERROW):
+            pattern = COLUMN_TYPE_MAP[s.fieldtype]
+            if not pattern:
+                raise Exception("Unknown Type 0x%02x" % s.fieldtype)
+            val = io.read(pattern)
+        # if s.feature(COLUMN_TYPE_STRING):
+        #     val = (utf.getstring(f, col_data[0]), col_data[0])
+        return val
 
     def feature(s, typeid):
-        pass
-
+        if type(typeid) == list:
+            return s.storagetype in typeid or s.fieldtype in typeid or s.typeid in typeid
+        else:
+            return s.storagetype == typeid or s.fieldtype == typeid or s.typeid == typeid
 
     def dump(s, io):
+        typeid = s.storagetype | s.fieldtype
+        return io.write((typeid, s.nameoffset), fmt=STRUCT_SCHEMA_DEF)
 
 class Row(AttributeDict):
     """@UTF Table Data Row (Mutable)"""
