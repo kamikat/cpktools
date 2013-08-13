@@ -133,10 +133,10 @@ class StringTable:
     def dump(s, io):
         return io.write('\x00'.join(s.entry) + '\x00')
 
+STRUCT_SCHEMA_DEF = '>BL'
+
 class Column:
     """@UTF Table Column"""
-
-    STRUCT_SCHEMA_DEF = '>BL'
 
     def __init__(s, utf):
         s.utf = utf
@@ -238,11 +238,11 @@ class Row(AttributeDict):
             else:
                 v[0].value(io, v[1]);
 
+STRUCT_UTF_HEADER = '>4sL'
+STRUCT_CONTENT_HEADER = '>LLLLHHL'
+
 class UTFTable:
     """@UTF Table Structure"""
-
-    STRUCT_UTF_HEADER = '>4sL'
-    STRUCT_CONTENT_HEADER = '>LLLLHHL'
 
     def __init__(s):
         s.string_table = None
