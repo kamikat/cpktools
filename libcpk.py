@@ -329,6 +329,58 @@ class UTFTable:
         for r in s.rows:
             r.translate()
 
-    def dump(s, io):
-        pass
+    def dump(s, io=None):
+        if not io:
+            io = s.io
+
+        if type(io) == file:
+            io = UTFTableIO(ostream=io, encrypted=s.encrypted)
+
+        s.table_name_string = s.string(s.table_name)
+        s.column_length = len(s.cols)
+        s.row_length = len(s.rows)
+
+        s.row_width = 0
+
+        cols_offset = calcsize(STRUCT_CONTENT_HEADER)
+
+        with closing(StringIO()) as tf:
+            iobuf = UTFTableIO(ostream=tf)
+
+            # Dump Columns
+            for c in s.cols:
+                c.dump(iobuf)
+
+                # Stat for row_width
+                if c.feature(COLUMN_STORAGE_PERROW):
+                    pattern = COLUMN_TYPE_MAP[c.fieldtype]
+                    s.row_width += calcsize(pattern)
+
+            s.rows_offset = cols_offset + iobuf.otell()
+
+            # Dump Rows
+            for r in s.rows:
+                r.dump(iobuf)
+        
+            s.string_table_offset = cols_offset + iobuf.otell()
+
+            # Dump String Table
+
+            s.string_table.dump(iobuf)
+
+            s.data_offset = cols_offset + iobuf.otell()
+            s.table_size = s.data_offset
+
+            io.write(('@UTF', s.table_size), fmt=STRUCT_UTF_HEADER)
+            io.ostart()
+            io.write((
+                s.rows_offset, 
+                s.string_table_offset, 
+                s.data_offset, # always == s.table_size
+                s.table_name_string, 
+                s.column_length, 
+                s.row_width, 
+                s.row_length
+            ), fmt=STRUCT_CONTENT_HEADER)
+            io.write(tf.getvalue())
 
