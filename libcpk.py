@@ -182,9 +182,9 @@ class Column:
 
     def feature(s, typeid):
         if type(typeid) == list:
-            return s.storagetype in typeid or s.fieldtype in typeid or s.typeid in typeid
+            return s.storagetype in typeid or s.fieldtype in typeid or s.storagetype | s.fieldtype in typeid
         else:
-            return s.storagetype == typeid or s.fieldtype == typeid or s.typeid == typeid
+            return s.storagetype == typeid or s.fieldtype == typeid or s.storagetype | s.fieldtype == typeid
 
     def translate(s):
         s.name = s.utf.string(s.nameoffset)
