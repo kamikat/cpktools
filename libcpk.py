@@ -206,7 +206,7 @@ class Column:
             else:
                 io.write(s.const, fmt=pattern)
 
-class Row(AttributeDict):
+class Row:
     """@UTF Table Data Row (Mutable)"""
 
     def __init__(s, utf):
