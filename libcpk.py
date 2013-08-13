@@ -168,8 +168,6 @@ class Column:
                 if not pattern:
                     raise Exception("Unknown Type 0x%02x" % s.fieldtype)
                 val = io.read(pattern)
-            # if s.feature(COLUMN_TYPE_STRING):
-            #     val = (utf.getstring(f, col_data[0]), col_data[0])
             return val
         else:
             if s.feature(COLUMN_STORAGE_PERROW):
@@ -186,9 +184,25 @@ class Column:
         else:
             return s.storagetype == typeid or s.fieldtype == typeid or s.typeid == typeid
 
+    def translate(s):
+        s.name = s.utf.string(s.nameoffset)
+        if s.feature(COLUMN_STORAGE_CONSTANT | COLUMN_TYPE_STRING):
+            s.const = s.utf.string(s.const)
+
     def dump(s, io):
+        s.nameoffset = s.utf.string(s.name)
+
         typeid = s.storagetype | s.fieldtype
-        return io.write((typeid, s.nameoffset), fmt=STRUCT_SCHEMA_DEF)
+        io.write((typeid, s.nameoffset), fmt=STRUCT_SCHEMA_DEF)
+
+        if s.feature(COLUMN_STORAGE_CONSTANT):
+            pattern = COLUMN_TYPE_MAP[s.fieldtype]
+            if not pattern:
+                raise Exception("Unknown Type 0x%02x" % s.fieldtype)
+            if s.feature(COLUMN_TYPE_STRING):
+                io.write((s.utf.string(s.const)), fmt=pattern)
+            else:
+                io.write((s.const), fmt=pattern)
 
 class Row(AttributeDict):
     """@UTF Table Data Row (Mutable)"""
@@ -206,9 +220,21 @@ class Row(AttributeDict):
 
         return s
 
+    def translate(s):
+        row = []
+        for v in s.row:
+            if v[0].feature(COLUMN_STORAGE_PERROW | COLUMN_TYPE_STRING):
+                v = (v[0], s.utf.string(v[1]))
+            row.append(v)
+        s.row = row
+
     def dump(s, io):
         for v in s.row:
-            v[0].value(io, v[1]);
+            if v[0].feature(COLUMN_STORAGE_PERROW | COLUMN_TYPE_STRING):
+                # Convert string to offset in string table
+                v[0].value(io, s.utf.string(v[1]));
+            else:
+                v[0].value(io, v[1]);
 
 class UTFTable:
     """@UTF Table Structure"""
@@ -286,13 +312,20 @@ class UTFTable:
 
         assert io.itell() == s.data_offset
 
+        # Read values from string table
+        s.translate()
+
         return s
 
-    def string(s, v=None):
-        if v:
-            return s.string_table[v]
-        else:
-            return s.string_table[s.nameoffset]
+    def string(s, v):
+        return s.string_table[v]
+
+    def translate(s):
+        s.table_name = s.string(s.table_name_string)
+        for c in s.cols:
+            c.translate()
+        for r in s.rows:
+            r.translate()
 
     def dump(s, io):
         pass
