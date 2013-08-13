@@ -62,8 +62,8 @@ class UTFTableIO:
 
     def read(s, fmt=None, n=-1):
         if int == type(fmt):
-            fmt = None
             n = fmt
+            fmt = None
         if fmt:
             return unpack(fmt, s.read(calcsize(fmt)))
         else:
