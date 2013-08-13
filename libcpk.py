@@ -189,7 +189,7 @@ class Column:
     def translate(s):
         s.name = s.utf.string(s.nameoffset)
         if s.feature(COLUMN_STORAGE_CONSTANT | COLUMN_TYPE_STRING):
-            s.const = s.utf.string(s.const)
+            s.const = s.utf.string(s.const[0])
 
     def dump(s, io):
         s.nameoffset = s.utf.string(s.name)
@@ -202,9 +202,9 @@ class Column:
             if not pattern:
                 raise Exception("Unknown Type 0x%02x" % s.fieldtype)
             if s.feature(COLUMN_TYPE_STRING):
-                io.write((s.utf.string(s.const)), fmt=pattern)
+                io.write((s.utf.string(s.const), ), fmt=pattern)
             else:
-                io.write((s.const), fmt=pattern)
+                io.write(s.const, fmt=pattern)
 
 class Row(AttributeDict):
     """@UTF Table Data Row (Mutable)"""
@@ -226,7 +226,7 @@ class Row(AttributeDict):
         row = []
         for v in s.row:
             if v[0].feature(COLUMN_STORAGE_PERROW | COLUMN_TYPE_STRING):
-                v = (v[0], s.utf.string(v[1]))
+                v = (v[0], s.utf.string(v[1][0]))
             row.append(v)
         s.row = row
 
@@ -234,7 +234,7 @@ class Row(AttributeDict):
         for v in s.row:
             if v[0].feature(COLUMN_STORAGE_PERROW | COLUMN_TYPE_STRING):
                 # Convert string to offset in string table
-                v[0].value(io, s.utf.string(v[1]));
+                v[0].value(io, (s.utf.string(v[1]), ));
             else:
                 v[0].value(io, v[1]);
 
