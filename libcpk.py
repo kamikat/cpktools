@@ -368,6 +368,9 @@ class UTFTable:
 
             s.string_table.dump(iobuf)
 
+            padding = ((0x10 - (iobuf.otell() + cols_offset + calcsize(STRUCT_UTF_HEADER)) % 0x10) % 0x10) * '\x00'
+            iobuf.write(padding)
+
             s.data_offset = cols_offset + iobuf.otell()
             s.table_size = s.data_offset
 
