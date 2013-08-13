@@ -81,10 +81,12 @@ class UTFTableIO:
             return s.ostream.write(b)
 
     def istart(s):
-        return s._istart = s.istream.tell()
+        s._istart = s.istream.tell()
+        return s._istart
 
     def ostart(s):
-        return s._ostart = s.ostream.tell()
+        s._ostart = s.ostream.tell()
+        return s._ostart
 
     def itell(s):
         return s.istream.tell() - s._istart
@@ -255,7 +257,7 @@ class UTFTable:
         marker = f.read(4)
         if marker == '\x1F\x9E\xF3\xF5':
             s.encrypted = True
-        else if marker == '@UTF':
+        elif marker == '@UTF':
             s.encrypted = False
         else:
             raise Exception("Invalid UTF Table Marker")
