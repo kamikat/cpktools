@@ -106,6 +106,9 @@ class StringTable:
         s.entry = []
         s.__map_stoo = {}
         s.__map_otos = {}
+
+        # Default Value
+        s.__getitem__('<NULL>')
     
     @classmethod
     def parse(cls, data):
