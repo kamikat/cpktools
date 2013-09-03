@@ -46,6 +46,14 @@ $ <Command> --help
 
 Extend work to these scripts is appreciative.
 
+Reference
+---------
+
+The file description is based on utf_table code by
+[Halley's Comet Software](http://hcs64.com/)
+
+And a more systematic description from <http://wrttn.in/04fb3f>
+
 License
 -------
 
