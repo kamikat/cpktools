@@ -298,15 +298,15 @@ class Column(StringHelper):
 
         if s.be(COLUMN_STORAGE_CONSTANT):
 
-            raise Exception("Unable to write to CONSTANT STORAGE Column `%s'" % s.name)
+            pass # raise Exception("Unable to write to CONSTANT STORAGE Column `%s'" % s.name)
 
         elif s.be(COLUMN_STORAGE_ZERO):
 
-            raise Exception("Unable to write to ZERO STORAGE Column `%s'" % s.name)
+            pass # raise Exception("Unable to write to ZERO STORAGE Column `%s'" % s.name)
 
         elif s.be(COLUMN_STORAGE_PERROW):
 
-            return io.write((val), s.pattern())
+            return io.write(val, s.pattern())
 
     def be(s, typeid):
 
@@ -332,38 +332,54 @@ class Row(StringHelper):
     """@UTF Table Data Row (Mutable)"""
 
     def __init__(s, utf):
+
         s.utf = utf
-        s.row = []
+
+        # Configure StringHelper
+        s.__escape__ = map(
+                lambda x: x.name,
+                filter(
+                    lambda x: x.be(COLUMN_TYPE_STRING), 
+                    s.utf.cols
+                )
+            )
 
     @classmethod
     def parse(cls, utf, io):
+
         s = cls(utf)
 
         for col in s.utf.cols:
-            s.row.append((col, col.value(io)))
+
+            val = col.read(io)
+
+            # Set value as instance attribute
+            s.__setattr__(col.name, val)
 
         return s
 
-    def translate(s):
-        row = []
-        for v in s.row:
-            if v[0].be(COLUMN_STORAGE_PERROW | COLUMN_TYPE_STRING):
-                v = (v[0], s.utf.string(v[1][0]))
-            row.append(v)
-        s.row = row
-
     def dump(s, io):
-        for v in s.row:
-            if v[0].be(COLUMN_STORAGE_PERROW | COLUMN_TYPE_STRING):
-                # Convert string to offset in string table
-                v[0].value(io, (s.utf.string(v[1]), ));
+
+        for col in s.utf.cols:
+
+            if col.be(COLUMN_TYPE_STRING):
+                val = s.__getattr__('__' + col.name)
             else:
-                v[0].value(io, v[1]);
+                val = s.__getattr__(col.name)
+
+            col.write(io, val);
+
+    __getitem__ = __getattr__
+    __setitem__ = __setattr__
 
 class UTFTable(StringHelper):
     """@UTF Table Structure"""
 
     def __init__(s):
+
+        # Referenced from StringHelper
+        s.utf = s
+
         s.string_table = None
         s.rows = []
         s.cols = []
