@@ -1,3 +1,4 @@
+from io import SEEK_SET, SEEK_CUR, SEEK_END
 from struct import calcsize, pack, unpack
 from array import array
 from cStringIO import StringIO
@@ -40,8 +41,16 @@ STRUCT_COLUMN_DATA      = {
     COLUMN_TYPE_1BYTE   : '>B',
 }
 
-STRUCT_UTF_HEADER = '>4sL'
-STRUCT_CONTENT_HEADER = '>LLLLHHL'
+STRUCT_TABLE_HEADER = '>4sL'
+STRUCT_BODY_HEADER = '>LLLLHHL'
+
+def keyset(c, m):
+    f = c
+    yield c
+    c = c * m & 0b11111111
+    while not c == f:
+        yield c
+        c = c * m & 0b11111111
 
 class UTFChiper:
 
@@ -50,7 +59,9 @@ class UTFChiper:
     def __init__(s, c=0x5f, m=0x15):
 
         # Configure encrypt/decrypt key (balanced)
-        (s.c, s.m) = (c, m)
+        s.codes = [x for x in keyset(c, m)]
+        s.pos = 0
+        s.m = m
 
     def code(s, data):
 
@@ -59,21 +70,40 @@ class UTFChiper:
         v = array('B', data)
 
         for i in xrange(len(v)):
-            v[i] = v[i] ^ s.c & 0b11111111
-            s.c = s.c * s.m & 0b11111111
+            v[i] = v[i] ^ s.codes[s.pos] & 0b11111111
+            s.seek(1, SEEK_CUR)
 
         return v.tostring()
+
+    def seek(s, offset, whence = SEEK_SET):
+
+        if whence == SEEK_SET:
+            s.pos = offset % len(s.codes)
+
+        if whence == SEEK_CUR:
+            s.pos = (offset + s.pos) % len(s.codes)
+
+    def key(s):
+
+        return (s.codes[s.pos], s.m)
 
 class UTFTableIO:
 
     """@UTF Table IO Helper"""
 
-    def __init__(s, stream=None, encrypted=False, key=(0x5f, 0x15)):
+    def __init__(s, stream, encrypted=False, key=(0x5f, 0x15)):
+
+        """
+        Create a wrapper class for stream provided
+        """
 
         (s.stream, s.encrypted) = (stream, encrypted)
 
         # Create chiper instance for encrypted stream
         s.chiper = UTFChiper(*key) if s.encrypted else None
+
+        # Record start position of current stream
+        s.spos = stream.tell()
 
     def read(s, fmt=None, n=-1):
 
@@ -116,7 +146,18 @@ class UTFTableIO:
 
     def tell(s):
 
-        return s.stream.tell()
+        return s.stream.tell() - s.spos
+
+    def seek(s, offset, whence = SEEK_SET):
+
+        # Seek the chiper
+        if s.chiper:
+            s.chiper.seek(offset, whence)
+
+        if whence == SEEK_SET:
+            return s.stream.seek(offset + s.spos)
+
+        return s.stream.seek(offset, whence)
 
 class StringTable:
 
@@ -177,7 +218,7 @@ class StringTable:
 
             else:
                 
-                raise Exception("Cannot find string entry at %x" % key)
+                raise Exception("Cannot find string entry at 0x%x" % (key))
 
     def dump(s, io):
 
@@ -205,17 +246,21 @@ class StringHelper(object):
 
         clz = s.__class__
 
-        if list == type(clz.__escape__):
+        r1 = (attr in clz.__escape__) if '__escape__' in dir(clz) else False
+        r2 = (attr in s.__escape__) if '__escape__' in dir(s) else False
 
-            return attr in clz.__escape__ or attr in s.__escape__
+        return r1 or r2
 
     def __getattr__(s, attr):
 
-        val = object.__getattr__(s, attr)
-
         if s.__requireescape(attr):
 
+            val = object.__getattribute__(s, '__' + attr)
             val = s.string(val)
+
+        else:
+
+            val = object.__getattribute__(s, attr)
 
         return val
 
@@ -226,8 +271,8 @@ class StringHelper(object):
             if str == type(val):
                 val = s.string(val)
 
-            # Set a copy of origin value to private variable with same name 
-            s.__setattr__('__' + attr, val)
+            # Set origin value to private variable with same name 
+            return s.__setattr__('__' + attr, val)
 
         return object.__setattr__(s, attr, val)
 
@@ -235,7 +280,7 @@ class StringHelper(object):
 
         """Convert between string and offset"""
 
-        if !s.utf:
+        if not 'utf' in dir(s):
             raise Exception("@UTF Table object must be specified")
 
         return s.utf.string(val)
@@ -320,6 +365,9 @@ class Column(StringHelper):
 
             return s.storage == typeid or s.datatype == typeid or s.storage | s.datatype == typeid
 
+    def __repr__(s):
+        return '"' + s.name + '"'
+
     def dump(s, io):
 
         io.write((typeid, s.__name), STRUCT_COLUMN_SCHEMA)
@@ -339,7 +387,10 @@ class Row(StringHelper):
         s.__escape__ = map(
                 lambda x: x.name,
                 filter(
-                    lambda x: x.be(COLUMN_TYPE_STRING), 
+                    lambda x: x.be([
+                        COLUMN_TYPE_STRING | COLUMN_STORAGE_PERROW, 
+                        COLUMN_TYPE_STRING | COLUMN_STORAGE_CONSTANT
+                        ]), 
                     s.utf.cols
                 )
             )
@@ -369,18 +420,23 @@ class Row(StringHelper):
 
             col.write(io, val);
 
-    __getitem__ = __getattr__
-    __setitem__ = __setattr__
+    __getitem__ = StringHelper.__getattr__
+    __setitem__ = StringHelper.__setattr__
 
 class UTFTable(StringHelper):
     """@UTF Table Structure"""
+
+    __escape__ = [ 'table_name' ]
 
     def __init__(s):
 
         # Referenced from StringHelper
         s.utf = s
 
-        s.string_table = None
+        # New instance of StringTable
+        s.string_table = StringTable()
+
+        # Initialize rows and cols list
         s.rows = []
         s.cols = []
 
@@ -396,7 +452,9 @@ class UTFTable(StringHelper):
             s.encrypted = False
         else:
             raise Exception("Invalid UTF Table Marker")
-        f.seek(-4, 1);
+
+        # Reset the read pointer
+        f.seek(-len(marker), SEEK_CUR);
 
         # IO Wrapper
         io = s.io = UTFTableIO(f, encrypted=s.encrypted)
@@ -405,120 +463,134 @@ class UTFTable(StringHelper):
         (
                 s.marker, 
                 s.table_size, 
-        ) = io.read(STRUCT_UTF_HEADER)
+        ) = io.read(STRUCT_TABLE_HEADER)
 
         assert s.marker == '@UTF'
 
-        # assert len(table_content) == s.table_size
-
-        # Setup start flag for new section
-        io.istart()
+        # Enter table body
+        io = UTFTableIO(io)
 
         # Table Headers
+
+        io.seek(0)
+
         (
                 s.rows_offset, 
                 s.string_table_offset, 
                 s.data_offset, # always == s.table_size
-                s.table_name_string, 
+                s.table_name, 
                 s.column_length, 
                 s.row_width, 
                 s.row_length
-        ) = io.read(STRUCT_CONTENT_HEADER)
+        ) = io.read(STRUCT_BODY_HEADER)
 
         assert s.data_offset == s.table_size
 
-        ## Columns
-
-        while len(s.cols) < s.column_length:
-            s.cols.append(Column.parse(s, io));
-
-        assert io.itell() == s.rows_offset
-
-        ## Rows
-
-        while len(s.rows) < s.row_length:
-            s.rows.append(Row.parse(s, io));
-
-        assert io.itell() == s.string_table_offset
+        ## END
 
         ## String Table
+
+        io.seek(s.string_table_offset)
 
         string_table_sz = s.table_size - s.string_table_offset
 
         s.string_table = StringTable.parse(io.read(string_table_sz))
 
-        assert io.itell() == s.data_offset
+        assert io.tell() == s.data_offset
 
-        # Read values from string table
-        s.translate()
+        ## END
+
+        ## Columns
+
+        io.seek(calcsize(STRUCT_BODY_HEADER))
+
+        while len(s.cols) < s.column_length:
+            s.cols.append(Column.parse(s, io));
+
+        assert io.tell() == s.rows_offset
+
+        ## END
+
+        ## Rows
+
+        io.seek(s.rows_offset)
+
+        while len(s.rows) < s.row_length:
+            s.rows.append(Row.parse(s, io));
+
+        assert io.tell() == s.string_table_offset
+
+        ## END
 
         return s
 
     def string(s, v):
+
+        if tuple == type(v):
+            v = v[0]
+
         return s.string_table[v]
 
-    def translate(s):
-        s.table_name = s.string(s.table_name_string)
-        for c in s.cols:
-            c.translate()
-        for r in s.rows:
-            r.translate()
+    def __len__(s):
 
-    def dump(s, io=None):
-        if not io:
-            io = s.io
+        # Return record count
+        return len(s.rows)
+
+    def dump(s, io):
 
         if type(io) == file:
-            io = UTFTableIO(ostream=io, encrypted=s.encrypted)
+            io = UTFTableIO(io, encrypted=s.encrypted)
 
-        s.table_name_string = s.string(s.table_name)
+        table_name = s.__table_name
+
         s.column_length = len(s.cols)
         s.row_length = len(s.rows)
 
         s.row_width = 0
 
-        cols_offset = calcsize(STRUCT_CONTENT_HEADER)
+        body_offset = calcsize(STRUCT_BODY_HEADER)
 
-        with closing(StringIO()) as tf:
-            iobuf = UTFTableIO(ostream=tf)
+        f = StringIO()
+        iobuf = UTFTableIO(f)
 
-            # Dump Columns
-            for c in s.cols:
-                c.dump(iobuf)
+        # Dump Columns
+        for c in s.cols:
+            c.dump(iobuf)
 
-                # Stat for row_width
-                if c.be(COLUMN_STORAGE_PERROW):
-                    pattern = STRUCT_COLUMN_DATA[c.fieldtype]
-                    s.row_width += calcsize(pattern)
+            # Stat for row_width
+            if c.be(COLUMN_STORAGE_PERROW):
+                s.row_width += calcsize(c.pattern())
 
-            s.rows_offset = cols_offset + iobuf.otell()
+        # Dump Rows
+        s.rows_offset = body_offset + iobuf.tell()
 
-            # Dump Rows
-            for r in s.rows:
-                r.dump(iobuf)
-        
-            s.string_table_offset = cols_offset + iobuf.otell()
+        for r in s.rows:
+            r.dump(iobuf)
+    
+        # Dump String Table
+        s.string_table_offset = body_offset + iobuf.tell()
 
-            # Dump String Table
+        s.string_table.dump(iobuf)
 
-            s.string_table.dump(iobuf)
+        # Calculate padding (including STRUCT_TABLE_HEADER)
+        table_dry_sz = calcsize(STRUCT_TABLE_HEADER) + body_offset + iobuf.tell()
+        padding = ((0x10 - table_dry_sz % 0x10) % 0x10) * '\x00'
+        iobuf.write(padding)
 
-            padding = ((0x10 - (iobuf.otell() + cols_offset + calcsize(STRUCT_UTF_HEADER)) % 0x10) % 0x10) * '\x00'
-            iobuf.write(padding)
+        # Calculate table size
+        s.table_size = body_offset + iobuf.tell()
+        s.data_offset = s.table_size
 
-            s.data_offset = cols_offset + iobuf.otell()
-            s.table_size = s.data_offset
-
-            io.write(('@UTF', s.table_size), STRUCT_UTF_HEADER)
-            io.ostart()
-            io.write((
-                s.rows_offset, 
-                s.string_table_offset, 
-                s.data_offset, # always == s.table_size
-                s.table_name_string, 
-                s.column_length, 
-                s.row_width, 
-                s.row_length
-            ), STRUCT_CONTENT_HEADER)
-            io.write(tf.getvalue())
+        # Write @UTF Table
+        io.write(('@UTF', s.table_size), STRUCT_TABLE_HEADER)
+        io.write((
+            s.rows_offset, 
+            s.string_table_offset, 
+            s.data_offset, # always == s.table_size
+            s.__table_name, 
+            s.column_length, 
+            s.row_width, 
+            s.row_length
+        ), STRUCT_BODY_HEADER)
+        io.write(f.getvalue())
 
