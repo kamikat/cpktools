@@ -169,8 +169,8 @@ class StringTable:
 
         s.entry = []
 
-        s.__map_stoo = {}
-        s.__map_otos = {}
+        s._map_stoo = {}
+        s._map_otos = {}
 
         # Default Value
         s.__getitem__('<NULL>')
@@ -193,9 +193,9 @@ class StringTable:
 
         if type(key) == str:
 
-            if s.__map_stoo.has_key(key):
+            if s._map_stoo.has_key(key):
                 
-                return s.__map_stoo[key]
+                return s._map_stoo[key]
 
             else:
 
@@ -203,8 +203,8 @@ class StringTable:
                 s.entry.append(key);
 
                 # Register to mapping
-                s.__map_otos[s.bytecounter] = key
-                s.__map_stoo[key] = s.bytecounter
+                s._map_otos[s.bytecounter] = key
+                s._map_stoo[key] = s.bytecounter
 
                 s.bytecounter += len(key) + 1 # For \x00 byte
 
@@ -212,9 +212,9 @@ class StringTable:
 
         else:
 
-            if s.__map_otos.has_key(key):
+            if s._map_otos.has_key(key):
 
-                return s.__map_otos[key]
+                return s._map_otos[key]
 
             else:
                 
@@ -232,6 +232,7 @@ class StringHelper(object):
     By specifying 
 
         class.__escape__ = <list of names> 
+        self._escape_ = <list of names> 
 
     attributes with the name in list will be automatically escaped according to 
     StringTable, all values set to the attribute will also be mapped to StringTable
@@ -240,14 +241,14 @@ class StringHelper(object):
 
     def __requireescape(s, attr):
 
-        if attr.startswith('__'):
+        if attr.startswith('_'):
             
             return False
 
         clz = s.__class__
 
         r1 = (attr in clz.__escape__) if '__escape__' in dir(clz) else False
-        r2 = (attr in s.__escape__) if '__escape__' in dir(s) else False
+        r2 = (attr in s._escape_) if '_escape_' in dir(s) else False
 
         return r1 or r2
 
@@ -255,7 +256,7 @@ class StringHelper(object):
 
         if s.__requireescape(attr):
 
-            val = object.__getattribute__(s, '__' + attr)
+            val = object.__getattribute__(s, '_offset_' + attr)
             val = s.string(val)
 
         else:
@@ -272,7 +273,7 @@ class StringHelper(object):
                 val = s.string(val)
 
             # Set origin value to private variable with same name 
-            return s.__setattr__('__' + attr, val)
+            return s.__setattr__('_offset_' + attr, val)
 
         return object.__setattr__(s, attr, val)
 
@@ -370,7 +371,7 @@ class Column(StringHelper):
 
     def dump(s, io):
 
-        io.write((typeid, s.__name), STRUCT_COLUMN_SCHEMA)
+        io.write((s.storage | s.datatype, s._offset_name), STRUCT_COLUMN_SCHEMA)
 
         if s.be(COLUMN_STORAGE_CONSTANT):
             io.write(s.const, s.pattern())
@@ -384,7 +385,7 @@ class Row(StringHelper):
         s.utf = utf
 
         # Configure StringHelper
-        s.__escape__ = map(
+        s._escape_ = map(
                 lambda x: x.name,
                 filter(
                     lambda x: x.be([
@@ -413,8 +414,8 @@ class Row(StringHelper):
 
         for col in s.utf.cols:
 
-            if col.be(COLUMN_TYPE_STRING):
-                val = s.__getattr__('__' + col.name)
+            if col.name in s._escape_:
+                val = s.__getattr__('_offset_' + col.name)
             else:
                 val = s.__getattr__(col.name)
 
@@ -541,7 +542,7 @@ class UTFTable(StringHelper):
         if type(io) == file:
             io = UTFTableIO(io, encrypted=s.encrypted)
 
-        table_name = s.__table_name
+        table_name = s._offset_table_name
 
         s.column_length = len(s.cols)
         s.row_length = len(s.rows)
@@ -587,7 +588,7 @@ class UTFTable(StringHelper):
             s.rows_offset, 
             s.string_table_offset, 
             s.data_offset, # always == s.table_size
-            s.__table_name, 
+            s._offset_table_name, 
             s.column_length, 
             s.row_width, 
             s.row_length
