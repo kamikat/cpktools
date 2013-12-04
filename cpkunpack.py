@@ -18,6 +18,10 @@ FRAME_1RAW        = "1raw"
 FRAME_80000024    = "80 00 00 24"
 FRAME_PNG         = "PNG"
 
+FRAME__GENERIC    = "<generic>"
+FRAME__IGNORED    = "<ignored>"  # skipped on purpose
+
+
 FRAME_HEADER_MAP = [
     ('CPK'                                               , FRAME_CPK),
     ('\xE5\x56\xD1\x9D' + '\x00' * 12                    , FRAME_ZERO),
@@ -31,13 +35,22 @@ FRAME_HEADER_MAP = [
     ('1raw'                                              , FRAME_1RAW),
     ('\x80\x00\x00\x24\x03\x12\x04\x02\x00\x00\x56\x22'  , FRAME_80000024),
     ('\x89PNG\x0D\x0A\x1A\x0A'                           , FRAME_PNG),
+# Example for ignoring 0x10 frame
+#    ('\xA5\xA5\x15\x06' + '\x00' * 12                    , FRAME__IGNORED),
 ]
+
+FRAME_EXTRA_TYPES = [
+    (None, FRAME__GENERIC),
+]
+
 
 def identify(header, nofail=False):
     for k, v in FRAME_HEADER_MAP:
         if header.startswith(k):
             return v
     if not nofail:
+        if args.do_extract_as_raw:
+            return FRAME__GENERIC
         raise Exception('Unable to recognize frame for "%s"' % repr(header));
 
 from cStringIO import StringIO
@@ -102,6 +115,13 @@ def extract_png(header, f):
                 prvdata = hexdata
         return [out.getvalue()]
 
+def extract_generic_from_tablelibrary(header, f):
+    with closing(StringIO()) as out:
+        f.seek(-0x10, 1)
+        row = lib.fromoffset(f.tell()) # lib is a global TableLibrary object, possibly incomplete
+        out.write(f.read(row.ExtractSize[0]))
+        return [out.getvalue()]
+
 def extract_none(header, f):
     return ['']
 
@@ -118,6 +138,8 @@ FRAME_EXTRACTOR_MAP = {
     FRAME_1RAW      : extract_1raw,
     FRAME_80000024  : extract_80000024,
     FRAME_PNG       : extract_png,
+    FRAME__IGNORED  : extract_none,
+    FRAME__GENERIC  : extract_generic_from_tablelibrary,
 }
 
 def extract(typename, header, f):
@@ -142,6 +164,8 @@ def readframe(f):
     while True:
         offset = f.tell()
         header = f.read(0x10)
+        # DEBUG
+        # print >>stderr, 'readframe(f) @ 0x%08x' % (offset)
         typename = identify(header)
         data = extract(typename, header, f)
         yield DataFrame(offset, typename, header, data)
@@ -595,6 +619,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--skip',
             default=0, dest='skip', type=int,
             help='Skip previous N files')
+    parser.add_argument('--extract-unknown', dest='do_extract_as_raw', help='Extract frames not matching any filetype based on TOC', action='store_true')
     args = parser.parse_args()
 
     infile = open(args.input, 'rb')
@@ -603,7 +628,7 @@ if __name__ == '__main__':
 
     STAT = {}
 
-    for h, k in FRAME_HEADER_MAP:
+    for h, k in FRAME_HEADER_MAP + FRAME_EXTRA_TYPES:
         STAT[k] = 0
 
     frames = 0
@@ -620,7 +645,7 @@ if __name__ == '__main__':
         print >>stderr, "0x%010X Found Frame %-16s (0x%06X)\r" % \
                 (frame.offset, frame.typename, len(frame.data[0])),
 
-        if frame.typename in [FRAME_ZERO, FRAME_COPYRIGHT]: 
+        if frame.typename in [FRAME_ZERO, FRAME_COPYRIGHT, FRAME__IGNORED]:
             # With no Data
             pass
         elif frame.typename in [FRAME_CPK, FRAME_TOC, FRAME_ITOC, FRAME_ETOC]:
@@ -723,7 +748,7 @@ if __name__ == '__main__':
     print >>stderr, '=' * LINE_WIDTH
     print >>stderr, "Scanner Found %d Frames" % frames
 
-    for h, k in FRAME_HEADER_MAP:
+    for h, k in FRAME_HEADER_MAP + FRAME_EXTRA_TYPES:
         print >>stderr, "%16s : %d" % (k, STAT[k])
 
     infile.close();
