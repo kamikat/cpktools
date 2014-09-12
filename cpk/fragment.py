@@ -64,6 +64,7 @@ class Fragment:
 
         s = Fragment.parse(f, offset, size + 0x10);
         s.data = s.data[0x10:]
+        s.length -= 0x10
         s.special = special
 
         return s
