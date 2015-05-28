@@ -43,9 +43,9 @@ with open(args.output, 'wb') as output:
         try:
             (start, end, length, text) = unpack_line(line)
         except Exception as e:
-            print '[ERROR] reading line %d: ' % (raw.index(line) + 1), e
-            print '[DEBUG] rawdata: ', (line,)
-            print '[DEBUG] matches: ', unpack_line(line)
+            print '[ERROR] Reading line %d: ' % (raw.index(line) + 1), e
+            print '[ERROR] Rawdata: ', (line,)
+            print '[ERROR] Matches: ', unpack_line(line)
             continue
 
         if args.codefile:
@@ -63,6 +63,22 @@ with open(args.output, 'wb') as output:
         if len(data) == 0:
             print '[WARNING] Skipped 0x%s-0x%s' % (start, end)
             continue
+
+        text_length = int(length, 0) - 4
+
+        if len(data) > text_length:
+            print '[EXCCEED] %4d/%-4d :: %s' % (len(data), text_length, line.encode('utf-8'))
+            data = data[:text_length]
+        # append tail padding
+        if len(data) < text_length:
+            data += '\x00' * (text_length - len(data))
+        assert len(data) == text_length
+
+        # handle duplicate lines
+        if srcptr == int(end, 0):
+            continue
+
+        assert srcptr <= int(start, 0)
 
         output.write(src[srcptr:int(start, 0)])
         output.write(struct.pack("<h", len(data) + 4))
