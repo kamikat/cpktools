@@ -31,7 +31,7 @@ if args.codefile:
             line = codefile.readline().strip('\r\n')
             if len(line):
                 code, character = line.decode('utf-8').split('=', 1)
-                codetable[character] = struct.pack('>H', int(code, 16))
+                codetable[character] = code.decode('hex')
             else:
                 break
 
