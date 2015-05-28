@@ -15,18 +15,13 @@ import re
 
 src = open(args.source, 'rb').read()
 
-p = re.compile(r"(0x[0-9A-Fa-f]{10})-(0x[0-9A-Fa-f]{10})\((0x[0-9A-Fa-f]{4})\)\t(.*)\r$")
+p = re.compile(r"(0x[0-9A-Fa-f]{10})-(0x[0-9A-Fa-f]{10})\((0x[0-9A-Fa-f]{4})\)\t(.*)$")
 
 def unpack_line(line):
     return tuple(filter(None, p.split(line)))
 
-txt = sorted(
-        filter(lambda (x): not x.startswith('#') and not len(x) == 0,
-            map(lambda (x): x.lstrip(),
-                open(args.text, 'rb').read().split('\n')
-                )
-            )
-        )
+raw = map(lambda (x): x.strip('\r\n'), open(args.text, 'rb').read().decode('utf-8-sig').split('\n'))
+txt = sorted(filter(lambda (x): not x.startswith('#') and not len(x) == 0, raw))
 
 codetable = {}
 
@@ -45,13 +40,13 @@ with open(args.output, 'wb') as output:
     srcptr = 0
 
     for line in txt:
-
         try:
             (start, end, length, text) = unpack_line(line)
-        except:
+        except Exception as e:
+            print '[ERROR] reading line %d: ' % (raw.index(line) + 1), e
+            print '[DEBUG] rawdata: ', (line,)
+            print '[DEBUG] matches: ', unpack_line(line)
             continue
-
-        text = text.decode('utf-8')
 
         if args.codefile:
             data = ''
