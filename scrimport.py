@@ -55,7 +55,9 @@ with open(args.output, 'wb') as output:
                     data += codetable[character]
                 else:
                     print '[WARNING] Missing character', character.encode('utf-8'), 'at', line
-                    continue
+                    break
+            else:
+                continue
         else:
             data = text.encode('shift-jis')
 
