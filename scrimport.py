@@ -54,12 +54,15 @@ with open(args.output, 'wb') as output:
                 if codetable.has_key(character):
                     data += codetable[character]
                 else:
+                    data = ''
                     print '[WARNING] Missing character', character.encode('utf-8'), 'at', line
                     break
-            else:
-                continue
         else:
             data = text.encode('shift-jis')
+
+        if len(data) == 0:
+            print '[WARNING] Skipped 0x%s-0x%s' % (start, end)
+            continue
 
         output.write(src[srcptr:int(start, 0)])
         output.write(struct.pack("<h", len(data) + 4))
