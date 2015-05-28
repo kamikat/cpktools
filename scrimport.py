@@ -35,6 +35,19 @@ if args.codefile:
             else:
                 break
 
+def encode(text, line):
+    if args.codefile:
+        data = ''
+        for character in text:
+            if codetable.has_key(character):
+                data += codetable[character]
+            else:
+                print '[WARNING] Missing character', character.encode('utf-8'), 'at', line
+                return None
+        return data
+    else:
+        return text.encode('shift-jis')
+
 with open(args.output, 'wb') as output:
 
     srcptr = 0
@@ -48,23 +61,15 @@ with open(args.output, 'wb') as output:
             print '[ERROR] Matches: ', unpack_line(line)
             continue
 
-        if args.codefile:
-            data = ''
-            for character in text:
-                if codetable.has_key(character):
-                    data += codetable[character]
-                else:
-                    data = ''
-                    print '[WARNING] Missing character', character.encode('utf-8'), 'at', line
-                    break
-        else:
-            data = text.encode('shift-jis')
+        encoded = encode(text, line)
 
-        if len(data) == 0:
+        if not encoded:
             print '[WARNING] Skipped 0x%s-0x%s' % (start, end)
             continue
 
         text_length = int(length, 0) - 4
+
+        data = encoded
 
         if len(data) > text_length:
             print '[EXCCEED] %4d/%-4d :: %s' % (len(data), text_length, line.encode('utf-8'))
