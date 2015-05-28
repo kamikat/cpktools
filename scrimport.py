@@ -8,6 +8,7 @@ parser.add_argument('text', help='text file with tags')
 parser.add_argument('-o', '--output', default='out.bin',
         help='output destination')
 parser.add_argument('-c', '--codefile', help='code file')
+parser.add_argument('-i', '--inplace', action='store_true', help='enable in-place mode')
 args = parser.parse_args()
 
 import struct
@@ -67,17 +68,17 @@ with open(args.output, 'wb') as output:
             print '[WARNING] Skipped 0x%s-0x%s' % (start, end)
             continue
 
-        text_length = int(length, 0) - 4
-
         data = encoded
 
-        if len(data) > text_length:
-            print '[EXCCEED] %4d/%-4d :: %s' % (len(data), text_length, line.encode('utf-8'))
-            data = data[:text_length]
-        # append tail padding
-        if len(data) < text_length:
-            data += '\x00' * (text_length - len(data))
-        assert len(data) == text_length
+        if args.inplace:
+            text_length = int(length, 0) - 4
+            if len(data) > text_length:
+                print '[EXCCEED] %4d/%-4d :: %s' % (len(data), text_length, line.encode('utf-8'))
+                data = data[:text_length]
+            # append tail padding
+            if len(data) < text_length:
+                data += '\x00' * (text_length - len(data))
+            assert len(data) == text_length
 
         # handle duplicate lines
         if srcptr == int(end, 0):
